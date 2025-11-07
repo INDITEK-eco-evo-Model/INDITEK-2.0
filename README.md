@@ -19,14 +19,16 @@ To run the model, you need to have in the same folder the functions (.py) and th
 - indices_points.npz: The index with the points in the three hotspots: mediterranean, caribbean and pacific. To track how the different hotspots have evolved during the time.
 
 # Model functions
-The module inditek_main runs the following sequence of functions with their corresponding outputs:
+The module principal_proof.py runs the following sequence of functions with their corresponding outputs:
 
 - rhonet.py: calculates diversification rate (rho) and effective carrying capacity (Keff), furthermore it calculates the index with the point time slices that suffer a mass extinction, (ext_index)
 - alphadiv.py: computes diversity in the model particles → D_shelf and rho_shelf_eff
 - gridMean.py: calculates the mean diversity in 0.5ºx0.5º grids
 - inditek_model_proof.py: compares the mean diversity with the proof diversity and calculates the Residual Sum of Squares Error.(RSME)
-- principal_proof.py: Run the previous functions and return the diversity and the RSME
-- metropolis_7param.py: Run the metropolis-hastings algorithm, estimating the most probable parameters.
+
+Then, to run the Metropolis-Hastings algorithm, you need to run the following scripts:
+
+- metropolis_7param.py: Run the metropolis-hastings algorithm, calling principal_proof.py for the model output, and estimate the most probable parameters.
 - indicios_7param.py: Load the data, call the metropolis function and save the results.
 
 # Figures 2 to 5:
