@@ -28,7 +28,7 @@ To run the model, you need to have in the same folder the functions (.py) and th
   This is used to search for active nearest neighbours (NN) in a restricted area, to mimick immigration from those points to points in a newly submerged continental platform.
 - rhoExt.csv: mass extinction patterns to input in the model.
 - observed_D.npz: The proof of concept data, the pattern diversity nowadays.
-- indices_points.npz: The position of the points that we follow backwards across time slices in the three hotspots (in the publication: Mediterranean, Caribbean and Pacific).
+- index_points.npz: The position of the points that we follow backwards across time slices in the three hotspots (in the publication: Mediterranean, Caribbean and Pacific).
   This allows to track how the diversity has evolved along time at a certain location.
 
  To run the Metropolis-Hastings (M-H) Markov Chain Monte Carlo (MCMC) algorithm you run **indicios_7param.py** which loads the data, sets the priors and prepares the M-H MCMC chains to run in parallell, then it runs **metropolis_7param.py** and retrieves the simulations outputs:
