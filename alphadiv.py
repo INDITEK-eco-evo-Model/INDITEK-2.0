@@ -308,7 +308,7 @@ def alphadiv(Point_timeslices,shelf_lonlatAge,rho_shelf,K_shelf,latWindow,lonWin
 
 
     #To save the data in a .npz file for tests
-    np.savez("datos_comprobacion_alphadiv.npz", z=z, D_shelf=D_shelf, scaling=scaling)
+    #np.savez("datos_comprobacion_alphadiv.npz", z=z, D_shelf=D_shelf, scaling=scaling)
 
 
     return rho_shelf_eff, D_shelf

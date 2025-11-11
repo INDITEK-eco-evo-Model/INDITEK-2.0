@@ -80,7 +80,7 @@ ran=np.array([[80,1000],[1,150],[0.001,np.inf],[0.0001,0.05],[1,4]])
 # Load input variables 
 #######################################################
 
-data_food_temp=scipy.io.loadmat('data/Point_foodtemp_paleoconfKocsisScotese_option2_GenieV4.mat')
+data_food_temp=scipy.io.loadmat('data/Point_foodtemp.mat')
 
 #print(data_food_temp.keys())
 #food_ocean=data['food_ocean']
@@ -88,7 +88,7 @@ food_shelf=data_food_temp['food_shelf']
 #temp_ocean=data['temp_ocean']
 temp_shelf=data_food_temp['temp_shelf']
 
-data_point_ages=scipy.io.loadmat('data/Point_ages_xyzKocsisScotese_400.mat')#
+data_point_ages=scipy.io.loadmat('data/Point_ages_xyz.mat')#
 #print(data_point_ages.keys())
 #
 Point_timeslices=data_point_ages['Point_timeslices'].astype(int)
@@ -100,7 +100,7 @@ data_LonDeg=scipy.io.loadmat('data/LonDeg.mat')
 
 LonDeg=data_LonDeg['LonDeg']
 
-data_Mask=mat73.loadmat('data/landShelfOceanMask_ContMargMaskKocsisScotese.mat')
+data_Mask=mat73.loadmat('data/landShelfOceanMask.mat')
 #print(data_Mask.keys())
 
 landShelfOcean_Lat=data_Mask['landShelfOcean_Lat']
@@ -114,10 +114,10 @@ landShelfOceanMask = np.flip(landShelfOceanMask, axis=2)
 #std_obis=data_obis["obis_error"]
 #ids_obis=data_obis["index"]
 
-data_ice=scipy.io.loadmat('data/Point_ice_v241023.mat')
+data_ice=scipy.io.loadmat('data/Point_ice.mat')
 ice_shelf=data_ice["ice_shelf"]
 
-data_proof=np.load("data/datos_proof_2.npz")
+data_proof=np.load("data/data_proof.npz")
 proof=data_proof[ "proof"]
 
 #Pre-allocate variables to store results
@@ -163,7 +163,7 @@ for iChain, result in enumerate(results):
 
 #Save the final results
 
-np.savez("datos_finales_indicios_7param.npz", params_proposed_history=params_proposed_history, params_accepted_history=params_accepted_history, rss_proposed_history=rss_proposed_history, rss_accepted_history=rss_accepted_history, acceptance_history=acceptance_history,  AR_parameter=AR_parameter, new_parameter=new_parameter, sigma_new=sigma_new, D=D)
+np.savez("final_data_indicios_7param.npz", params_proposed_history=params_proposed_history, params_accepted_history=params_accepted_history, rss_proposed_history=rss_proposed_history, rss_accepted_history=rss_accepted_history, acceptance_history=acceptance_history,  AR_parameter=AR_parameter, new_parameter=new_parameter, sigma_new=sigma_new, D=D)
 
 #Finally, to measure the time it costs for the simulation
 end=time.time()

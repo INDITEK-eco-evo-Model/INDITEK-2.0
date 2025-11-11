@@ -4,7 +4,7 @@ import pandas as pd
 def rhonet_evo(kfood,Kmin,food_shelf,temp_shelf,ext_pattern,Kmax_mean,spec_min_mean,spec_max_mean, Q10_mean,ext_intercept_shelf_mean,ext_slope_mean,shelf_lonlatAge,Point_timeslices):
         
     
-    data=pd.read_csv('data/rhoExtOriginal_b.csv')
+    data=pd.read_csv('data/rhoExt.csv')
     
 
     rhoExt=data.iloc[:,ext_pattern]
@@ -13,7 +13,7 @@ def rhonet_evo(kfood,Kmin,food_shelf,temp_shelf,ext_pattern,Kmax_mean,spec_min_m
 
     Point_timeslices=Point_timeslices[0]
 
-    print(Point_timeslices)
+    #print(Point_timeslices)
 
     rho_shelf = np.tile(rhoExt, (shelf_lonlatAge.shape[0], 1))  
 
@@ -79,7 +79,7 @@ def rhonet_evo(kfood,Kmin,food_shelf,temp_shelf,ext_pattern,Kmax_mean,spec_min_m
     rho_shelf1 = speciation_shelf
 
     #Incorporate Mass Extinctions and Fill Gaps
-    print(Point_timeslices[0])
+    #print(Point_timeslices[0])
     all_timeslices = np.arange(541, -1, -1)#Begin in 0 (because the last one is -1), if not it shows a problem
 
 
