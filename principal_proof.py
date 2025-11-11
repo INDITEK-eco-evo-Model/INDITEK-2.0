@@ -35,15 +35,14 @@ def principal(kfood, Kmin, food_shelf, temp_shelf, ext_pattern, Kmax_mean, spec_
      ##
      #Kmax_mean=161.14
      ##
-     #data_food_temp=scipy.io.loadmat('data/Point_foodtemp_paleoconfKocsisScotese_option2_GenieV4.mat')
+     #data_food_temp=scipy.io.loadmat('data/Point_foodtemp.mat')
      ##
-     ###print(data_food_temp.keys())
      ###food_ocean=data['food_ocean']
      #food_shelf=data_food_temp['food_shelf']
      ###temp_ocean=data['temp_ocean']
      #temp_shelf=data_food_temp['temp_shelf']
      ##
-     #data_point_ages=scipy.io.loadmat('data/Point_ages_xyzKocsisScotese_400')#
+     #data_point_ages=scipy.io.loadmat('data/Point_ages_xyz.mat')#
      ###print(data_point_ages.keys())
      ###
      #Point_timeslices=data_point_ages['Point_timeslices'].astype(int)
@@ -56,7 +55,7 @@ def principal(kfood, Kmin, food_shelf, temp_shelf, ext_pattern, Kmax_mean, spec_
      ##
      #LonDeg=data_LonDeg['LonDeg']
      ##
-     #data_Mask=mat73.loadmat('data/landShelfOceanMask_ContMargMaskKocsisScotese.mat')
+     #data_Mask=mat73.loadmat('data/landShelfOceanMask.mat')
      ###print(data_Mask.keys())
      ##
      #landShelfOcean_Lat=data_Mask['landShelfOcean_Lat']
@@ -70,9 +69,9 @@ def principal(kfood, Kmin, food_shelf, temp_shelf, ext_pattern, Kmax_mean, spec_
      ##std_obis=data_obis["obis_error"]
      ##ids_obis=data_obis["index"]
      ##
-     #data_proof=np.load("data/datos_proof_2.npz")
+     #data_proof=np.load("data/data_proof.npz")
      #proof=data_proof[ "proof"]
-     ##indices=np.load("indices_points.npz")
+     ##indices=np.load("index_points.npz")
      ##indices_pac=indices["indices_pac"]
      ##indices_med=indices["indices_med"]
      ##indices_car=indices["indices_car"]
