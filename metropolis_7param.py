@@ -74,9 +74,8 @@ def inditek_metropolis(params_current, food_shelf, temp_shelf, Point_timeslices,
         "acceptance_history": np.zeros([nsamples,1]),
         "rss_accepted_history": np.zeros([nsamples,1]),
         "rss_proposed_history": np.zeros([nsamples,1]),
-        "residuals": np.zeros([2,2978]),
-        "AR_parameter": np.zeros(5),
-        "new_parameter": np.zeros(5),
+        #"AR_parameter": np.zeros(5),
+        #"new_parameter": np.zeros(5),
         "sigma_prop": np.zeros([nsamples,nparams]),
         "D": np.zeros([int(nsamples/n_D)+1,2978]),
         }
@@ -118,8 +117,8 @@ def inditek_metropolis(params_current, food_shelf, temp_shelf, Point_timeslices,
     #It is initialized to NaN to avoid problems in the first iteration
     index2=np.nan
 
-    AR_parameter=np.zeros(5)
-    new_parameter=np.zeros(5)
+    #AR_parameter=np.zeros(5)
+    #new_parameter=np.zeros(5)
     
 
     for iter in range(1,nsamples):
@@ -128,7 +127,7 @@ def inditek_metropolis(params_current, food_shelf, temp_shelf, Point_timeslices,
         #To change the parameter modified in each iteration but all with the same probability
 
         index1= np.random.randint(0, 5)
-        new_parameter[index1]+=1
+        #new_parameter[index1]+=1
 
         #If the parameter is the same as in the previous iteration, the change_params array adds 1 to the index of the parameter that has changed
 
@@ -195,7 +194,7 @@ def inditek_metropolis(params_current, food_shelf, temp_shelf, Point_timeslices,
                 
 
                 acceptance_tagmark=1 #Mark as accepted
-                AR_parameter[index1]+=1
+                #AR_parameter[index1]+=1
                 # UPDATE parameter values for NEXT ITERATION
 
                 params_current=params_proposed.copy()
@@ -225,8 +224,8 @@ def inditek_metropolis(params_current, food_shelf, temp_shelf, Point_timeslices,
 
     output["params_accepted_history"][iter+1, 0:nparams]=params_current
 
-    output["AR_parameter"]=AR_parameter
-    output["new_parameter"]=new_parameter
+    #output["AR_parameter"]=AR_parameter
+    #output["new_parameter"]=new_parameter
 
 
 ################################################################

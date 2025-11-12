@@ -16,9 +16,7 @@ def run_chain(iChain):
         output["params_proposed_history"], output["params_accepted_history"],
         output["rss_proposed_history"], output["rss_accepted_history"],
         output["acceptance_history"], 
-        output["residuals"], 
-        output["AR_parameter"], 
-        output["new_parameter"], output["sigma_prop"], output["D"]
+        output["sigma_prop"], output["D"]
     )
 
 start=time.time()
@@ -27,7 +25,7 @@ start=time.time()
 num_chains=1 
 nsamples=5
 nparams=5
-n_D=2
+n_D=2#To save D every n_D iterations
 
 #Mean of parameters distributions (mu):
 #
@@ -128,9 +126,6 @@ rss_proposed_history = np.zeros([nsamples,num_chains])
 rss_accepted_history = np.zeros([nsamples,num_chains])
 acceptance_history = np.zeros([nsamples,num_chains])
 log_posterior_diff_history = np.zeros([nsamples,num_chains])
-residuals = np.zeros([2,2978,num_chains])
-AR_parameter=np.zeros([5,num_chains])
-new_parameter=np.zeros([5,num_chains])
 sigma_new=np.zeros([nsamples,nparams, num_chains])
 D = np.zeros([int(nsamples/n_D)+1, 2978, num_chains]) # to store the D values for every 2 iterations, as it is only printed every 2 iterations
 
@@ -153,17 +148,14 @@ for iChain, result in enumerate(results):
     rss_proposed_history[:, iChain] = result[2].flatten()
     rss_accepted_history[:, iChain] = result[3].flatten()
     acceptance_history[:, iChain] = result[4].flatten()
-    residuals[:,:,iChain] = result[5]
-    AR_parameter[:,iChain]=result[6]
-    new_parameter[:,iChain]=result[7]
-    sigma_new[:,:,iChain]=result[8]
-    D[:, :, iChain] = result[9]
+    sigma_new[:,:,iChain]=result[5]
+    D[:, :, iChain] = result[6]
 
     
 
 #Save the final results
 
-np.savez("final_data_indicios_7param.npz", params_proposed_history=params_proposed_history, params_accepted_history=params_accepted_history, rss_proposed_history=rss_proposed_history, rss_accepted_history=rss_accepted_history, acceptance_history=acceptance_history,  AR_parameter=AR_parameter, new_parameter=new_parameter, sigma_new=sigma_new, D=D)
+np.savez("INDITEK_MCMCoutput.npz", params_proposed_history=params_proposed_history, params_accepted_history=params_accepted_history, rss_proposed_history=rss_proposed_history, rss_accepted_history=rss_accepted_history, acceptance_history=acceptance_history, sigma_new=sigma_new, D=D)
 
 #Finally, to measure the time it costs for the simulation
 end=time.time()
