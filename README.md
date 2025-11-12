@@ -60,7 +60,5 @@ The final data are saved in INDITEK_MCMCoutput.npz that contains the following v
 
 The script **visualization.py** plots the main results of the manuscript: (1) MCMC Chain Trajectories for parameter inference. (2) Proof-of-concept study used to validate the Bayesian inverse modelling framework of INDITEK-2.0. (3) The diversity maps of the calibrated model and of the proof model. It needs to be in the  same folder of INDITEK_MCMCoutput.npz generated with indicios_7param.py. 
 
-Explanations of all the functions are written inside them. For any further doubt, do not hesitate to contact us:
-gloriaherrero@icm.csic.es cgcomas@icm.csic.es
-
+Further explanation can be found inside each function.
 
