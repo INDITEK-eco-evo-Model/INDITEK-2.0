@@ -46,6 +46,14 @@ The module **principal_proof.py** runs the following sequence of functions with 
 
 The final data are saved in INDITEK_MCMCoutput.npz that contains the following variables:
 
+- **Params_proposed_history**: Stores the proposed parameter values for each iteration of the MCMC method.
+- **Params_accepted_history**: Stores the parameter values that were accepted by the MCMC model after comparison with the previously accepted ones.
+- **rss_proposed_history**: Records the resulting RSS of the model using the proposed parameters.
+- **rss_accepted_history**: Records the RSS of the model using the accepted parameters.
+- **acceptance_history**: Equals 1 if the proposed parameters were accepted, and 0 otherwise.
+- **sigma_new**: Shows the current value of sigma after it is updated in each iteration.
+- **D**: Represents the diversity calculated with the proposed parameters, saved every n_D iterations.
+
 
 
 # Figures 2 to 5:
