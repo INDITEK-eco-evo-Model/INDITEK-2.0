@@ -3,7 +3,7 @@ import numpy as np
 def inditek_model_proof (D,proof):
     model=D
 
-    residuals = (model - proof)/0.05#no hay rudio, añadirlo cuando preparo proof
+    residuals = (model - proof)/2#no hay rudio, añadirlo cuando preparo proof
 
     residuals=residuals**2
 
@@ -15,4 +15,4 @@ def inditek_model_proof (D,proof):
 
     print("Residual Sum of Squares (RSS):", rss)
 
-    return rss
+    return rss, residuals
