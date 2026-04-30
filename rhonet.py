@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd 
 
-def rhonet_evo(kfood,Kmin,food_shelf,temp_shelf,ext_pattern,Kmax_mean,spec_min_mean,spec_max_mean, Q10_mean,ext_intercept_shelf_mean,ext_slope_mean,shelf_lonlatAge,Point_timeslices):
+def rhonet_evo(kfood,Kmin,food_shelf,temp_shelf,ext_pattern,Kmax_mean,spec_min_mean,spec_max_mean, Q10_mean,ext_intercept_shelf_mean,ext_slope_mean,shelf_lonlatAge,Point_timeslices, model):
         
     
     data=pd.read_csv('data/rhoExt.csv')
@@ -24,15 +24,16 @@ def rhonet_evo(kfood,Kmin,food_shelf,temp_shelf,ext_pattern,Kmax_mean,spec_min_m
     Mfood=np.quantile(a,0.99)
     mfood=np.quantile(a,0.01)
 
-    #Effective carrying capacity: max N of genera that can be supported in a point according to food at that point and time 
+    if model!="expo":
+        #Effective carrying capacity: max N of genera that can be supported in a point according to food at that point and time 
 
-    K_shelf=Kmax_mean-(Kmax_mean-Kmin)*((Mfood-food_shelf)/(Mfood-mfood))
+        K_shelf=Kmax_mean-(Kmax_mean-Kmin)*((Mfood-food_shelf)/(Mfood-mfood))
 
-    #bounded between Kmax & Kmin (to reset those outlier values within the range)
+        #bounded between Kmax & Kmin (to reset those outlier values within the range)
 
-    K_shelf[K_shelf>Kmax_mean]=Kmax_mean
-    K_shelf[K_shelf<Kmin]=Kmin
-
+        K_shelf = K_shelf.clip(Kmin,Kmax_mean)
+    else:
+        K_shelf=None
     # Calculate Speciation Rate
     speciation_shelf=np.empty(food_shelf.shape)#empty matrix, same size as food_shelf to asign speciation
     extinction_shelf =np.empty(food_shelf.shape) # same for extinction rate (This will be used in further updates)
@@ -43,24 +44,24 @@ def rhonet_evo(kfood,Kmin,food_shelf,temp_shelf,ext_pattern,Kmax_mean,spec_min_m
         Mtemp=np.quantile(a[np.isnan(a)==0],0.99)
         mtemp=np.quantile(a[np.isnan(a)==0],0.01)
     
-
-        #Food limitation according to Michaelis-Menten analogous effect on population growth rate according to food availability 
-        Qfood_shelf=food_shelf[:,i]/(kfood+food_shelf[:,i])
-
+        Qfood_shelf = 1.0
+        Qtemp_shelf = 1.0
+        
+        if model!="food":
+        #Food limitation according to Michaelis-Menten analogous effect on population growth rate according to food availability
+            Qfood_shelf=np.clip(food_shelf[:,i]/(kfood+food_shelf[:,i]),0,1)
+            
+            #bound food to 0-1 range
+        
         #Thermal limitation according to Eppley curve defining the effect of temperature on metabolic rates and therefore on 
         # population growth rate according to temperature
-        EppleyCurve=Q10_mean**((temp_shelf[:,i]-mtemp)/10)
-        EppleyCurve_max=Q10_mean**((Mtemp-mtemp)/10)
-        EppleyCurve=EppleyCurve/EppleyCurve_max
-        Qtemp_shelf=EppleyCurve
+        
+        if model!="temp":
+            EppleyCurve=Q10_mean**((temp_shelf[:,i]-mtemp)/10)
+            EppleyCurve_max=Q10_mean**((Mtemp-mtemp)/10)
+            Qtemp_shelf=np.clip(EppleyCurve/EppleyCurve_max,0,1)
 
-        #bound food and thermal limitation to 0-1 range
-
-        Qtemp_shelf[Qtemp_shelf>1]=1
-        Qtemp_shelf[Qtemp_shelf<0]=0
-        Qfood_shelf[Qfood_shelf > 1] = 1
-        Qfood_shelf[Qfood_shelf < 0] = 0
-
+            #bound thermal limitation to 0-1 range
 
         Qlim_shelf=Qfood_shelf*Qtemp_shelf#colimitation of food and temperature combined (product of both)
 

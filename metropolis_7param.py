@@ -1,66 +1,58 @@
 import numpy as np
-from principal_proof import principal
+from principal import principal
 import scipy.io
 import time
 import mat73
 
 #Charge the data (just for tests)
-
+'''
 ##############################################################################################
 # JUST FOR TESTING PURPOSES TO LOAD THE DATA
 ###############################################################################################
 
-#data_point_ages=scipy.io.loadmat('Point_ages_xyzKocsisScotese_400.mat')
-#shelf_lonlatAge=data_point_ages['shelf_lonlatAge']
-#Point_timeslices=data_point_ages['Point_timeslices']
-##
-#data_mask=mat73.loadmat('landShelfOceanMask_ContMargMaskKocsisScotese.mat')
-#landShelfOcean_Lat=data_mask['landShelfOcean_Lat']
-#landShelfOcean_Lon=data_mask['landShelfOcean_Lon']
-#landShelfOceanMask=data_mask['landShelfOceanMask']
-#landShelfOceanMask = np.flip(landShelfOceanMask, axis=2)
-#
-#data_food_temp=scipy.io.loadmat('Point_foodtemp_v241023.mat')
-#
-#
-#food_shelf=data_food_temp['food_shelf']
-#temp_shelf=data_food_temp['temp_shelf']
-#
-#data_LonDeg=scipy.io.loadmat('LonDeg.mat')
-##print(data_LonDeg.keys())
-#
-#LonDeg=data_LonDeg['LonDeg']
-#
-#data_obis=scipy.io.loadmat("obis_data.mat")
-#
-#d_obis=data_obis["d_obis"]
-#se_obis=data_obis["se_obis"]
-#idx_obis=data_obis["idx_obis"]
-#
-#num_chains=2
-#nsamples=3
-#nparams=7
-##
-##
-##
-#data=np.load("indicios.npz")
-#params_current=data["params_current"]
-#mu=data["mu"]
-#sigma=data["sigma"]
-#sigma_prop=data["sigma_prop"]
-#ran=data["ran"]
-#
+data_point_ages=scipy.io.loadmat('Point_ages_xyzKocsisScotese_400.mat')
+shelf_lonlatAge=data_point_ages['shelf_lonlatAge']
+Point_timeslices=data_point_ages['Point_timeslices']
+
+data_mask=mat73.loadmat('landShelfOceanMask_ContMargMaskKocsisScotese.mat')
+landShelfOcean_Lat=data_mask['landShelfOcean_Lat']
+landShelfOcean_Lon=data_mask['landShelfOcean_Lon']
+landShelfOceanMask=data_mask['landShelfOceanMask']
+landShelfOceanMask = np.flip(landShelfOceanMask, axis=2)
+
+data_food_temp=scipy.io.loadmat('Point_foodtemp_v241023.mat')
+
+food_shelf=data_food_temp['food_shelf']
+temp_shelf=data_food_temp['temp_shelf']
+
+data_LonDeg=scipy.io.loadmat('LonDeg.mat')
+#print(data_LonDeg.keys())
+
+LonDeg=data_LonDeg['LonDeg']
+num_chains=2
+nsamples=3
+nparams=7
+
+data=np.load("indicios.npz")
+params_current=data["params_current"]
+mu=data["mu"]
+sigma=data["sigma"]
+sigma_prop=data["sigma_prop"]
+ran=data["ran"]
+
 ########################################################
 #END OF LOADING DATA
 #########################################################
+'''
+def inditek_metropolis(params_current, food_shelf, temp_shelf, Point_timeslices, shelf_lonlatAge, nsamples, nparams, proof, landShelfOceanMask, landShelfOcean_Lat, landShelfOcean_Lon, LonDeg, mu, sigma, ran, sigma_prop, n_D, model, active_params):
 
-def inditek_metropolis(params_current, food_shelf, temp_shelf, Point_timeslices, shelf_lonlatAge, nsamples, nparams, landShelfOceanMask, landShelfOcean_Lat, landShelfOcean_Lon, LonDeg, mu, sigma, ran, sigma_prop, proof, n_D):
 
-
+    gaus=np.array([])
     #Charge the fix parameters
     ext_intercept=0
     ext_slope=0
-    gaus=np.array([4])  
+    if model!="temp":
+        gaus=np.array([4])  
     kfood = 0.5 #[POC mol * m-2 yr-1]
     lonWindow=2.5 # distance in degrees to search for particles from which diversity is "migrated" into the new coastal particles (newly submerged or artificially created by the paleotectonic model). e.g. for a 2x2 deg. window give 1 (lonWindow) & 1 (latWindow) values.
     latWindow=2.5
@@ -74,10 +66,16 @@ def inditek_metropolis(params_current, food_shelf, temp_shelf, Point_timeslices,
         "acceptance_history": np.zeros([nsamples,1]),
         "rss_accepted_history": np.zeros([nsamples,1]),
         "rss_proposed_history": np.zeros([nsamples,1]),
-        #"AR_parameter": np.zeros(5),
-        #"new_parameter": np.zeros(5),
+        #"log_posterior_diff_history": np.zeros([nsamples,1]),
+        "residuals": np.zeros([int(nsamples/n_D)+1,2978]),
+        "AR_parameter": np.zeros(nparams),
+        "new_parameter": np.zeros(nparams),
         "sigma_prop": np.zeros([nsamples,nparams]),
         "D": np.zeros([int(nsamples/n_D)+1,2978]),
+        #"D_pac": np.zeros([int(nsamples/n_D)+1, len(indices_pac), 82]),
+        #"D_med": np.zeros([int(nsamples/n_D)+1, len(indices_med), 82]),
+        #"D_car": np.zeros([int(nsamples/n_D)+1, len(indices_car), 82])
+        "D_shelf": np.zeros([int(nsamples/n_D)+1,  49688, 82])
         }
 
 
@@ -92,8 +90,10 @@ def inditek_metropolis(params_current, food_shelf, temp_shelf, Point_timeslices,
     #Calculates the initial RSS (residual sum of squares) for the current parameters, it also saves the current global diversity and the 
     #diversity along time in the mediterranean, pacific and caribbean
 
-    [rss_current,D]=principal(kfood, params_current[1], food_shelf, temp_shelf, ext_pattern, params_current[0], params_current[3], params_current[2], params_current[4], ext_intercept, ext_slope, shelf_lonlatAge, Point_timeslices, latWindow,lonWindow,LonDeg, landShelfOcean_Lat,landShelfOcean_Lon, landShelfOceanMask, proof)
-
+    [rss_current,D, D_shelf, residuals]=principal(kfood, params_current[1], food_shelf, temp_shelf, ext_pattern, params_current[0], 
+                                                  params_current[3], params_current[2], params_current[4], ext_intercept, ext_slope, shelf_lonlatAge, Point_timeslices, 
+                                                  latWindow,lonWindow,LonDeg, landShelfOcean_Lat,landShelfOcean_Lon, landShelfOceanMask, proof, model)
+    
     temp=np.zeros(nparams)#force those with uniform distribution to a probability of 1 along the range (log(1)=0;)
     if gaus.size>0:
         temp[gaus]=mu[gaus]
@@ -110,15 +110,15 @@ def inditek_metropolis(params_current, food_shelf, temp_shelf, Point_timeslices,
 
     #Create the array to store the change of parameters in each iteration
 
-    n_AR=100
+    n_AR=50
     change_params=np.full([nparams,n_AR], np.nan)
 
     #Initialize the scalar index2, it is used to check if the parameter has changed in each iteration
     #It is initialized to NaN to avoid problems in the first iteration
     index2=np.nan
 
-    #AR_parameter=np.zeros(5)
-    #new_parameter=np.zeros(5)
+    AR_parameter=np.zeros(nparams)
+    new_parameter=np.zeros(nparams)
     
 
     for iter in range(1,nsamples):
@@ -126,8 +126,8 @@ def inditek_metropolis(params_current, food_shelf, temp_shelf, Point_timeslices,
 
         #To change the parameter modified in each iteration but all with the same probability
 
-        index1= np.random.randint(0, 5)
-        #new_parameter[index1]+=1
+        index1= np.random.randint(min(active_params), max(active_params)+1)
+        new_parameter[index1]+=1
 
         #If the parameter is the same as in the previous iteration, the change_params array adds 1 to the index of the parameter that has changed
 
@@ -157,14 +157,16 @@ def inditek_metropolis(params_current, food_shelf, temp_shelf, Point_timeslices,
 
 
         #I run the acceptance procedure if all my parameters are in bounds (between the range defined in inditek_indicios)
-        
-        if np.all(params_proposed <= ran[:,1]) and np.all(params_proposed >=ran[:,0]):
+        limit_inf = [fila[0] for fila in ran if not np.any(np.isnan(fila))]
+        limit_sup = [fila[1] for fila in ran if not np.any(np.isnan(fila)) ]
+        if np.all(params_proposed[active_params] <= limit_sup) and np.all(params_proposed[active_params] >=limit_inf):
 
             #Run the model and Calculate the RSS (residual sum of squares) for the proposed parameters
 
-            [rss_proposed,D]=principal(kfood, params_proposed[1], food_shelf, temp_shelf, ext_pattern, params_proposed[0], params_proposed[3], params_proposed[2], params_proposed[4], ext_intercept, ext_slope, shelf_lonlatAge, Point_timeslices, latWindow,lonWindow,LonDeg, landShelfOcean_Lat,landShelfOcean_Lon, landShelfOceanMask, proof) #con 7 parametros
-
-            #Calculate the log(prior), log(likelihood) and log(posterior) of proposed parameters to compare to the current ones in the loop
+            [rss_proposed,D, D_shelf, residuals]=principal(kfood, params_proposed[1],
+                                                            food_shelf, temp_shelf, ext_pattern, params_proposed[0], params_proposed[3], params_proposed[2], params_proposed[4], ext_intercept, ext_slope, 
+                                                            shelf_lonlatAge, Point_timeslices, latWindow,lonWindow,LonDeg, landShelfOcean_Lat,landShelfOcean_Lon, landShelfOceanMask, proof, model) #con 7 parametros
+            #As it is done before, calculate the log(prior), log(likelihood) and log(posterior) of proposed parameters to compare to the current ones in the loop
             temp=np.zeros([nparams,1])
             if gaus.size>0:
                 temp[gaus]=((params_current[gaus] - mu[gaus]) / sigma[gaus])**2
@@ -183,6 +185,11 @@ def inditek_metropolis(params_current, food_shelf, temp_shelf, Point_timeslices,
             output["sigma_prop"][iter]=sigma_prop
             if iter % n_D == 0:
                 output["D"][int(iter/n_D),:]=D
+                output["D_shelf"][int(iter/n_D),:,:]=D_shelf
+                output["residuals"][int(iter/n_D),:]=residuals
+
+                #output["D_med"][int(iter/n_D),:,:]=D_med
+                #output["D_car"][int(iter/n_D),:,:]=D_car
 
 
             #Calculate Acceptance Probability according to the ratio between the likelihood of proposed vs current 
@@ -194,7 +201,7 @@ def inditek_metropolis(params_current, food_shelf, temp_shelf, Point_timeslices,
                 
 
                 acceptance_tagmark=1 #Mark as accepted
-                #AR_parameter[index1]+=1
+                AR_parameter[index1]+=1
                 # UPDATE parameter values for NEXT ITERATION
 
                 params_current=params_proposed.copy()
@@ -216,8 +223,17 @@ def inditek_metropolis(params_current, food_shelf, temp_shelf, Point_timeslices,
             output["acceptance_history"][iter]=0
 
             if iter % n_D == 0:
-                output["D"][int(iter/n_D),:]=np.nan
+                output["D"][int(iter/n_D),:]=D
+                #output["D_pac"][int(iter/n_D),:,:]=D_pac
+                #output["D_med"][int(iter/n_D),:,:]=D_med
+                #output["D_car"][int(iter/n_D),:,:]=D_car
+                output["D_shelf"][int(iter/n_D),:,:]=D_shelf
+                output["residuals"][int(iter/n_D),:]=residuals
         index2=index1
+
+        #print("#########################################################################")
+        #print("ONE ITERATION DONE")
+        #print("############################################################################")
 
         #print(f"new_parameter: {new_parameter}")
         #print(f"acceptance rate for the parameter: {AR_parameter}")

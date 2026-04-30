@@ -6,7 +6,7 @@ def haversine_distance(lonlat1, lonlat_array):
     lat1=radians(lonlat1[1])
     lon1 = radians(lonlat1[0])
     lat2 = radians(lonlat_array[:,1])
-    lon2 = radians(lonlat_array[:, 0])
+    lon2 = radians(lonlat_array[:,0])
 
     deltaLat = lat2-lat1
     deltaLon = lon2-lon1

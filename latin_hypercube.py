@@ -1,10 +1,8 @@
 import numpy as np
-from scipy.stats.qmc import LatinHypercube
-
+from pyDOE import lhs
 def latin_hypercube_sampling_ichains(min_vals, max_vals, num_chains):
-    sampler = LatinHypercube(d=len(min_vals))
-    initial_params = sampler.random(n=num_chains)
-    for j in range(len(min_vals)):
-        initial_params[:,j]=min_vals[j]+(max_vals[j]-min_vals[j])*initial_params[:,j]
-
+    sampler = lhs(len(min_vals),samples=num_chains)
+    initial_params = np.zeros_like(sampler)
+    for i, (low, high) in enumerate(zip(min_vals, max_vals)):
+        initial_params[:, i] = low + sampler[:, i] * (high - low)
     return initial_params
