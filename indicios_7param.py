@@ -24,9 +24,9 @@ def run_chain(iChain):
 start=time.time()
 
 #MH-MCMC SETUP:
-num_chains=1
-nsamples=5
-n_D=2
+num_chains=6
+nsamples=5002
+n_D=50
 model='expo'
 
 ###########################################################3
@@ -196,7 +196,7 @@ for iChain, result in enumerate(results):
     sigma_new[:,:,iChain]=result[5]
     D[:,:,iChain]=result[6]
 
-np.savez(f"probita/data_indicios_{nsamples}_{model}_4.npz", params_proposed_history=params_proposed_history, params_accepted_history=params_accepted_history, rss_proposed_history=rss_proposed_history, rss_accepted_history=rss_accepted_history, acceptance_history=acceptance_history, D=D, residuals=residuals, sigma_new=sigma_new, AR_parameter=AR_parameter)
+np.savez(f"output_data/data_indicios_{nsamples}_{model}_4.npz", params_proposed_history=params_proposed_history, params_accepted_history=params_accepted_history, rss_proposed_history=rss_proposed_history, rss_accepted_history=rss_accepted_history, acceptance_history=acceptance_history, D=D, residuals=residuals, sigma_new=sigma_new, AR_parameter=AR_parameter)
 
 end=time.time()
 print('{:.4f} s'.format(end-start)) 
