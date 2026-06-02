@@ -66,24 +66,19 @@ def inditek_metropolis(params_current, food_shelf, temp_shelf, Point_timeslices,
         "acceptance_history": np.zeros([nsamples,1]),
         "rss_accepted_history": np.zeros([nsamples,1]),
         "rss_proposed_history": np.zeros([nsamples,1]),
-        #"log_posterior_diff_history": np.zeros([nsamples,1]),
         "residuals": np.zeros([int(nsamples/n_D)+1,2978]),
         "AR_parameter": np.zeros(nparams),
         "new_parameter": np.zeros(nparams),
         "sigma_prop": np.zeros([nsamples,nparams]),
         "D": np.zeros([int(nsamples/n_D)+1,2978]),
-        #"D_pac": np.zeros([int(nsamples/n_D)+1, len(indices_pac), 82]),
-        #"D_med": np.zeros([int(nsamples/n_D)+1, len(indices_med), 82]),
-        #"D_car": np.zeros([int(nsamples/n_D)+1, len(indices_car), 82])
         "D_shelf": np.zeros([int(nsamples/n_D)+1,  49688, 82])
         }
 
 
     #Save the initial parameters in the output dictionary
-    output["params_accepted_history"][0,:]=params_current
     output["params_proposed_history"][0,:]=params_current#Calculated in inditek_indicios as params_current=initial_theta(iChain,:)
 
-            #Initial RSS Calculation (before the loop)
+    #Initial RSS Calculation (before the loop)
 
 
 
@@ -99,14 +94,14 @@ def inditek_metropolis(params_current, food_shelf, temp_shelf, Point_timeslices,
         temp[gaus]=mu[gaus]
 
 
-        # calculate the log(prior), log(likelihood) and log(posterior) of current parameters to compare to the proposed ones in the loop
+    #Calculate the log(prior), log(likelihood) and log(posterior) of current parameters to compare to the proposed ones in the loop
 
     log_prior_current=-0.5*sum(temp)
     log_likelihood_current=-(1/2)*rss_current
     log_posterior_current =log_prior_current+log_likelihood_current
 
 
-                #Metropolis-Hastings samples with RSS   
+    #Metropolis-Hastings samples with RSS   
 
     #Create the array to store the change of parameters in each iteration
 
@@ -120,9 +115,9 @@ def inditek_metropolis(params_current, food_shelf, temp_shelf, Point_timeslices,
     AR_parameter=np.zeros(nparams)
     new_parameter=np.zeros(nparams)
     
+    #Initializes the loop for the number of iterations defined in nsamples
 
     for iter in range(1,nsamples):
-
 
         #To change the parameter modified in each iteration but all with the same probability
 
@@ -140,7 +135,7 @@ def inditek_metropolis(params_current, food_shelf, temp_shelf, Point_timeslices,
         #Initializes the proposed parameters with the current ones
         params_proposed=params_current.copy()
 
-        #If it is the 3st time that the parameter has changed, it modifies the sigma_prop of that parameter
+        #If it is the n_ARst time that the parameter has changed, it modifies the sigma_prop of that parameter
         if change_params[index1][np.isnan(change_params[index1])==0].size%n_AR==0 and index2!=index1:
             
             #Calculates the acceptance rate (AR) of the parameter that has changed as the sum of the acceptance history divided by the number of iterations
@@ -156,7 +151,7 @@ def inditek_metropolis(params_current, food_shelf, temp_shelf, Point_timeslices,
         params_proposed[index1]=params_current[index1]+A[index1,0]*sigma_prop[index1]
 
 
-        #I run the acceptance procedure if all my parameters are in bounds (between the range defined in inditek_indicios)
+        #The acceptance procedure is runned if all the parameters are in bounds (between the range defined in inditek_indicios)
         limit_inf = [fila[0] for fila in ran if not np.any(np.isnan(fila))]
         limit_sup = [fila[1] for fila in ran if not np.any(np.isnan(fila)) ]
         if np.all(params_proposed[active_params] <= limit_sup) and np.all(params_proposed[active_params] >=limit_inf):
@@ -187,9 +182,6 @@ def inditek_metropolis(params_current, food_shelf, temp_shelf, Point_timeslices,
                 output["D"][int(iter/n_D),:]=D
                 output["D_shelf"][int(iter/n_D),:,:]=D_shelf
                 output["residuals"][int(iter/n_D),:]=residuals
-
-                #output["D_med"][int(iter/n_D),:,:]=D_med
-                #output["D_car"][int(iter/n_D),:,:]=D_car
 
 
             #Calculate Acceptance Probability according to the ratio between the likelihood of proposed vs current 
@@ -224,9 +216,6 @@ def inditek_metropolis(params_current, food_shelf, temp_shelf, Point_timeslices,
 
             if iter % n_D == 0:
                 output["D"][int(iter/n_D),:]=D
-                #output["D_pac"][int(iter/n_D),:,:]=D_pac
-                #output["D_med"][int(iter/n_D),:,:]=D_med
-                #output["D_car"][int(iter/n_D),:,:]=D_car
                 output["D_shelf"][int(iter/n_D),:,:]=D_shelf
                 output["residuals"][int(iter/n_D),:]=residuals
         index2=index1
