@@ -45,7 +45,7 @@ def inditek_gridMean_alphadiv(D_shelf,shelf_lonlatAge,landShelfOcean_Lat,landShe
     
 
 
-    #Selects the latitudes and longitudes that are not NaN (not active points without diversity at time 0Myr) and ignores the NaN values.
+    #Selects the latitudes and longitudes that are not NaN (not active points without diversity at time 0Myr) and ignore them.
     lat=lat[np.isnan(d)==0]#
     lon=lon[np.isnan(d)==0]  #ingnore NaN (no active points without diversity at time 0Myr)#
     d=d[np.isnan(d)==0]#
@@ -53,7 +53,7 @@ def inditek_gridMean_alphadiv(D_shelf,shelf_lonlatAge,landShelfOcean_Lat,landShe
     
 
 
-
+    #Linealize the latitudinal and longitudinal points to go for them inside a loop.
     lat_idx=np.digitize(lat, lat_edges) - 1
     lon_idx=np.digitize(lon,lon_edges) - 1
 
@@ -64,20 +64,20 @@ def inditek_gridMean_alphadiv(D_shelf,shelf_lonlatAge,landShelfOcean_Lat,landShe
     count=np.zeros(X.shape)
 
     #It goes from all the elements of the grid and adds the diversity values to the corresponding grid cell.
-    #The count array is used to count the number of values added to each grid cell. It is used to calculate the mean diversity value for each grid cell.
+    #The count array is recovers the number of values added to each grid cell. It is used to calculate the mean diversity value for each of them.
     for i in range(len(grid_idx)):
         if LSOmask.flat[grid_idx[i]]==1:
             D.flat[grid_idx[i]] += d[i]
             count.flat[grid_idx[i]]+=1
 
 
-    #It diVides to calculate the mean diversity value for each grid cell.
+    #It divides to calculate the mean diversity value for each cell.
     D=D/count
 
 
 
 
-    #It just selects the points that are 1 in the LSOmask (the ones that are not land or ocean) and the points that the diversity is not 0 (the ones that have diversity).
+    #It just selects the points that are not 1 in the LSOmask (the ones that are not land or ocean) and the points that the diversity is not 0 (the ones that have diversity).
     D[LSOmask!=1]=np.nan
     D[D==0]=np.nan
 

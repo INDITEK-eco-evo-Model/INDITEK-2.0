@@ -11,8 +11,6 @@ def rhonet_evo(kfood,Kmin,food_shelf,temp_shelf,ext_pattern,Kmax_mean,spec_min_m
     time=data.iloc[:,0]
     time_ext=time[rhoExt<0]
 
-    Point_timeslices=Point_timeslices[0]
-
     #print(Point_timeslices)
 
     rho_shelf = np.tile(rhoExt, (shelf_lonlatAge.shape[0], 1))  
@@ -24,6 +22,7 @@ def rhonet_evo(kfood,Kmin,food_shelf,temp_shelf,ext_pattern,Kmax_mean,spec_min_m
     Mfood=np.quantile(a,0.99)
     mfood=np.quantile(a,0.01)
 
+    #Just calculate K_shelf if the model is not "expo", because in that case K does not affect diversity, so it is not necessary to calculate it
     if model!="expo":
         #Effective carrying capacity: max N of genera that can be supported in a point according to food at that point and time 
 
@@ -36,7 +35,6 @@ def rhonet_evo(kfood,Kmin,food_shelf,temp_shelf,ext_pattern,Kmax_mean,spec_min_m
         K_shelf=None
     # Calculate Speciation Rate
     speciation_shelf=np.empty(food_shelf.shape)#empty matrix, same size as food_shelf to asign speciation
-    extinction_shelf =np.empty(food_shelf.shape) # same for extinction rate (This will be used in further updates)
 
     for i in range(food_shelf.shape[1]):
         #Selects the values of temperature that are within the range of the 0.01 and 0.99 quantiles, to avoid outliers
@@ -47,7 +45,7 @@ def rhonet_evo(kfood,Kmin,food_shelf,temp_shelf,ext_pattern,Kmax_mean,spec_min_m
         Qfood_shelf = 1.0
         Qtemp_shelf = 1.0
         
-        if model!="food":
+        if model!="food":#Just calculate the food limitation if the model is not "food", if the model is food, Qfood=1
         #Food limitation according to Michaelis-Menten analogous effect on population growth rate according to food availability
             Qfood_shelf=np.clip(food_shelf[:,i]/(kfood+food_shelf[:,i]),0,1)
             
@@ -56,7 +54,7 @@ def rhonet_evo(kfood,Kmin,food_shelf,temp_shelf,ext_pattern,Kmax_mean,spec_min_m
         #Thermal limitation according to Eppley curve defining the effect of temperature on metabolic rates and therefore on 
         # population growth rate according to temperature
         
-        if model!="temp":
+        if model!="temp":#Just calculate the temperature limitation if the model is not "temp", if the model is temp, Qtemp=1
             EppleyCurve=Q10_mean**((temp_shelf[:,i]-mtemp)/10)
             EppleyCurve_max=Q10_mean**((Mtemp-mtemp)/10)
             Qtemp_shelf=np.clip(EppleyCurve/EppleyCurve_max,0,1)
@@ -66,21 +64,15 @@ def rhonet_evo(kfood,Kmin,food_shelf,temp_shelf,ext_pattern,Kmax_mean,spec_min_m
         Qlim_shelf=Qfood_shelf*Qtemp_shelf#colimitation of food and temperature combined (product of both)
 
         # Calculate speciation rates according to food and temperature colimitation
-        a=spec_max_mean - (spec_max_mean - spec_min_mean) * (1.0 - Qlim_shelf) #speciation dependent on food and temp limitation (temp limitation bounded to current thermal range, ie, considering aclimation)
+        a=spec_max_mean - (spec_max_mean - spec_min_mean) * (1.0 - Qlim_shelf) #speciation dependent on food and temp limitation (temp limitation bounded to current thermal range, i.e., considering aclimation)
 
 
         speciation_shelf[:,i]=a
 
-        ##Calculate Background Extinction Rate (latitude-dependent, both hemispheres) for each time slice
-        ##Shelf_lonlatAge is a 3 vector where the 1st represents longitude, the 2nd represents latitude and the 3rd represents Age
-        #shelf_lat = shelf_lonlatAge[:,i,1] # Extract latitude for the current time slice
-        #
-        #lat_shelf_abs = abs(shelf_lat) #convert to absolute latitude
 
     rho_shelf1 = speciation_shelf
 
     #Incorporate Mass Extinctions and Fill Gaps
-    #print(Point_timeslices[0])
     all_timeslices = np.arange(541, -1, -1)#Begin in 0 (because the last one is -1), if not it shows a problem
 
 
@@ -97,16 +89,15 @@ def rhonet_evo(kfood,Kmin,food_shelf,temp_shelf,ext_pattern,Kmax_mean,spec_min_m
 
     for i in range(len(Point_timeslices)):
 
-        a=np.where(all_timeslices==Point_timeslices[i])[0][0]#Select in all the sequence the years, just the ones that are in the Point_timeslices
+        a=np.where(all_timeslices==Point_timeslices[i])[0][0]#Select in all the sequence of years, just the ones that are in the Point_timeslices
         
         f=np.where(rho_shelf[:,a]<0)#Select the years in point_timeslices (the ones that appear in slices) that suffers a mass extinction
 
-        #print(f)
-        if f[0].size == 0:#If it doesn't suffers a mass extinctions
-            rho_shelf[:,a]=rho_shelf1[:,i]# It can be in both a because in the first one it goes from 1 to 541 just with the extinction ones, and in the second one it goes from 1 to 82
+        if f[0].size == 0:#If it doesn't suffer a mass extinctions
+            rho_shelf[:,a]=rho_shelf1[:,i]
             postPT[i]=a
         else:
-            rho_shelf[:,a-1]=rho_shelf1[:,i]# It can be in both a because in the first one it goes from 1 to 541 just with the extinction ones, and in the second one it goes from 1 to 82
+            rho_shelf[:,a-1]=rho_shelf1[:,i]
             postPT[i]=a-1
 
 
