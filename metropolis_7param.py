@@ -48,83 +48,81 @@ def inditek_metropolis(params_current, food_shelf, temp_shelf, Point_timeslices,
 
 
     gaus=np.array([])
-    #Charge the fix parameters
+    #Saves the fix parameters
     ext_intercept=0
     ext_slope=0
     if model!="temp":
         gaus=np.array([4])  
     kfood = 0.5 #[POC mol * m-2 yr-1]
     lonWindow=2.5 # distance in degrees to search for particles from which diversity is "migrated" into the new coastal particles (newly submerged or artificially created by the paleotectonic model). e.g. for a 2x2 deg. window give 1 (lonWindow) & 1 (latWindow) values.
-    latWindow=2.5
+    latWindow=2.5 #same but with latitude.
     ext_pattern=4 # Zaffos curve = 1, % Alroy curve = 2, % Sepkoski curve = 3, % average all curves = 4
 
-        #Storage for Diagnostics
+    #Storage for Diagnostics
     output={
-
-        "params_accepted_history": np.zeros([nsamples+1,nparams]),
         "params_proposed_history": np.zeros([nsamples,nparams]),
-        "acceptance_history": np.zeros([nsamples,1]),
-        "rss_accepted_history": np.zeros([nsamples,1]),
+        "params_accepted_history": np.zeros([nsamples+1,nparams]),
         "rss_proposed_history": np.zeros([nsamples,1]),
-        "residuals": np.zeros([int(nsamples/n_D)+1,2978]),
-        "AR_parameter": np.zeros(nparams),
-        "new_parameter": np.zeros(nparams),
-        "sigma_prop": np.zeros([nsamples,nparams]),
+        "rss_accepted_history": np.zeros([nsamples,1]),
+        "acceptance_history": np.zeros([nsamples,1]),
         "D": np.zeros([int(nsamples/n_D)+1,2978]),
-        "D_shelf": np.zeros([int(nsamples/n_D)+1,  49688, 82])
+        "residuals": np.zeros([int(nsamples/n_D)+1,2978]),
+        "sigma_prop": np.zeros([nsamples,nparams]),
+        "AR_parameter": np.zeros(nparams),
         }
 
 
-    #Save the initial parameters in the output dictionary
+    #Saves the initial parameters in the output dictionary
     output["params_proposed_history"][0,:]=params_current#Calculated in inditek_indicios as params_current=initial_theta(iChain,:)
 
     #Initial RSS Calculation (before the loop)
 
 
 
-    #Calculates the initial RSS (residual sum of squares) for the current parameters, it also saves the current global diversity and the 
-    #diversity along time in the mediterranean, pacific and caribbean
+    #Calculates the initial RSS (Residual Sum of Squares) for the current parameters.
+    #It also saves the current global diversity value in D and the residuals for each grid cell in the residuals variable
 
-    [rss_current,D, D_shelf, residuals]=principal(kfood, params_current[1], food_shelf, temp_shelf, ext_pattern, params_current[0], 
+    [rss_current,D, residuals]=principal(kfood, params_current[1], food_shelf, temp_shelf, ext_pattern, params_current[0], 
                                                   params_current[3], params_current[2], params_current[4], ext_intercept, ext_slope, shelf_lonlatAge, Point_timeslices, 
                                                   latWindow,lonWindow,LonDeg, landShelfOcean_Lat,landShelfOcean_Lon, landShelfOceanMask, proof, model)
     
-    temp=np.zeros(nparams)#force those with uniform distribution to a probability of 1 along the range (log(1)=0;)
+    #Calculate the logarithm of the prior probability for the current parameters.
+    temp=np.zeros(nparams)#Force those with a uniform distribution to a probability of 1 along the range (log(1)=0;)
     if gaus.size>0:
         temp[gaus]=mu[gaus]
 
 
-    #Calculate the log(prior), log(likelihood) and log(posterior) of current parameters to compare to the proposed ones in the loop
+    #Calculate the log(prior), log(likelihood) and log(posterior) of current parameters to compare them to the proposed ones in the loop
 
     log_prior_current=-0.5*sum(temp)
     log_likelihood_current=-(1/2)*rss_current
     log_posterior_current =log_prior_current+log_likelihood_current
 
 
-    #Metropolis-Hastings samples with RSS   
+    #Metropolis-Hastings sampling with RSS   
 
-    #Create the array to store the change of parameters in each iteration
+    #Create the array to store the parameter changes in each iteration
 
     n_AR=50
     change_params=np.full([nparams,n_AR], np.nan)
 
-    #Initialize the scalar index2, it is used to check if the parameter has changed in each iteration
+    #Initialize the scalar index2, which is used to check if the parameter has changed in each iteration
     #It is initialized to NaN to avoid problems in the first iteration
     index2=np.nan
 
     AR_parameter=np.zeros(nparams)
     new_parameter=np.zeros(nparams)
     
-    #Initializes the loop for the number of iterations defined in nsamples
+    #Initialize the loop for the number of iterations defined in nsamples
 
     for iter in range(1,nsamples):
 
-        #To change the parameter modified in each iteration but all with the same probability
+        #Change the parameter modified in each iteration, giving each the same probability
 
         index1= np.random.randint(min(active_params), max(active_params)+1)
         new_parameter[index1]+=1
 
-        #If the parameter is the same as in the previous iteration, the change_params array adds 1 to the index of the parameter that has changed
+        #If the parameter is not the same as in the previous iteration, the change_params array adds 1 to the index of the parameter that has changed
 
         if index1!=index2:
             
@@ -132,36 +130,36 @@ def inditek_metropolis(params_current, food_shelf, temp_shelf, Point_timeslices,
             change_params[index1][idx] = iter
 
 
-        #Initializes the proposed parameters with the current ones
+        #Initialize the proposed parameters with the current ones
         params_proposed=params_current.copy()
 
-        #If it is the n_ARst time that the parameter has changed, it modifies the sigma_prop of that parameter
+        #If it is the n_ARst time that the parameter has changed, modify the sigma_prop of that parameter
         if change_params[index1][np.isnan(change_params[index1])==0].size%n_AR==0 and index2!=index1:
             
-            #Calculates the acceptance rate (AR) of the parameter that has changed as the sum of the acceptance history divided by the number of iterations
-            valid_indices = change_params[index1][np.isnan(change_params[index1])==0].astype(int)
-            AR=np.nanmean(output["acceptance_history"][valid_indices])
+            #Calculate the acceptance rate (AR) of the parameter that has changed as the sum of the acceptance history divided by the number of iterations
+            correct_index = change_params[index1][np.isnan(change_params[index1])==0].astype(int)
+            AR=np.nanmean(output["acceptance_history"][correct_index])
             change_params[index1]=np.full([n_AR], np.nan)
-            #It changes the sigma_prop of the parameter that has changed
+            #Change the sigma_prop of the parameter that has changed
             sigma_prop[index1]=max(sigma_prop[index1]*AR/(0.4),1e-12)
 
-
-        #Perturb the selected parameter (propose a value randomly)=perturbation of parameter values according to a search-window represented by a gaussian of std sigma_prop
+        #Perturb the selected parameter (propose a value randomly) according to a search window represented by a Gaussian with a standard deviation equal to sigma_prop
         A=np.random.randn(nparams,1)
         params_proposed[index1]=params_current[index1]+A[index1,0]*sigma_prop[index1]
 
 
-        #The acceptance procedure is runned if all the parameters are in bounds (between the range defined in inditek_indicios)
+        #The acceptance procedure is runned if all the parameters are within bounds (within the range defined in indicios_7param)
         limit_inf = [fila[0] for fila in ran if not np.any(np.isnan(fila))]
         limit_sup = [fila[1] for fila in ran if not np.any(np.isnan(fila)) ]
         if np.all(params_proposed[active_params] <= limit_sup) and np.all(params_proposed[active_params] >=limit_inf):
 
-            #Run the model and Calculate the RSS (residual sum of squares) for the proposed parameters
+            #Run the model and calculate the RSS (Residual Sum of Squares) for the proposed parameters
 
-            [rss_proposed,D, D_shelf, residuals]=principal(kfood, params_proposed[1],
+            [rss_proposed,D, residuals]=principal(kfood, params_proposed[1],
                                                             food_shelf, temp_shelf, ext_pattern, params_proposed[0], params_proposed[3], params_proposed[2], params_proposed[4], ext_intercept, ext_slope, 
-                                                            shelf_lonlatAge, Point_timeslices, latWindow,lonWindow,LonDeg, landShelfOcean_Lat,landShelfOcean_Lon, landShelfOceanMask, proof, model) #con 7 parametros
-            #As it is done before, calculate the log(prior), log(likelihood) and log(posterior) of proposed parameters to compare to the current ones in the loop
+                                                            shelf_lonlatAge, Point_timeslices, latWindow,lonWindow,LonDeg, landShelfOcean_Lat,landShelfOcean_Lon, landShelfOceanMask, proof, model) 
+            
+            #As done before, calculate the log(prior), log(likelihood) and log(posterior) of the proposed parameters to compare them to the current ones in the loop
             temp=np.zeros([nparams,1])
             if gaus.size>0:
                 temp[gaus]=((params_current[gaus] - mu[gaus]) / sigma[gaus])**2
@@ -178,14 +176,14 @@ def inditek_metropolis(params_current, food_shelf, temp_shelf, Point_timeslices,
             output["rss_proposed_history"][iter]=rss_proposed
             output["rss_accepted_history"][iter]=rss_current
             output["sigma_prop"][iter]=sigma_prop
+            #Save the diversity and residuals every n_D iterations in the output dictionary
             if iter % n_D == 0:
                 output["D"][int(iter/n_D),:]=D
-                output["D_shelf"][int(iter/n_D),:,:]=D_shelf
                 output["residuals"][int(iter/n_D),:]=residuals
 
 
-            #Calculate Acceptance Probability according to the ratio between the likelihood of proposed vs current 
-            # (log_posterior_proposed-log_posterior_current) and compare to a random (0-1) number u:
+            #Calculate the acceptance probability according to the ratio between the likelihood of proposed vs. current 
+            # (log_posterior_proposed-log_posterior_current) and compare it to a random number u (0-1):
 
             u=np.random.rand()
             if np.log(u)<log_posterior_proposed-log_posterior_current:
@@ -216,16 +214,12 @@ def inditek_metropolis(params_current, food_shelf, temp_shelf, Point_timeslices,
 
             if iter % n_D == 0:
                 output["D"][int(iter/n_D),:]=D
-                output["D_shelf"][int(iter/n_D),:,:]=D_shelf
                 output["residuals"][int(iter/n_D),:]=residuals
         index2=index1
 
         #print("#########################################################################")
         #print("ONE ITERATION DONE")
         #print("############################################################################")
-
-        #print(f"new_parameter: {new_parameter}")
-        #print(f"acceptance rate for the parameter: {AR_parameter}")
 
     output["params_accepted_history"][iter+1, 0:nparams]=params_current
 
@@ -237,7 +231,7 @@ def inditek_metropolis(params_current, food_shelf, temp_shelf, Point_timeslices,
 #save the output dictionary to a .npz file if you are checking
 ################################################################
 
-    #np.savez("datos_finales_metropolis.npz", params_proposed_history=output["params_proposed_history"], params_accepted_history=output["params_accepted_history"],
+    #np.savez("final_data_metropolis.npz", params_proposed_history=output["params_proposed_history"], params_accepted_history=output["params_accepted_history"],
     #    rss_proposed_history=output["rss_proposed_history"], rss_accepted_history=output["rss_accepted_history"],
     #    acceptance_history=output["acceptance_history"], log_posterior_diff_history=output["log_posterior_diff_history"])
 

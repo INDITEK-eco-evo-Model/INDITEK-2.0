@@ -6,50 +6,48 @@ from metropolis_7param import inditek_metropolis
 import mat73
 import scipy.io
 
-
+#Calls the MCMC function (Metropolis) in parallel and returns its output
 def run_chain(iChain):
     
     params_current=np.transpose(initial_theta[iChain,:])
-    #output=inditek_metropolis(LonDeg, landShelfOcean_Lat,landShelfOcean_Lon, landShelfOceanMask, d_obis,se_obis, idx_obis, shelf_lonlatAge, Point_timeslices, food_shelf, temp_shelf, initial_theta[iChain,:], mu, sigma, sigma_prop, ran,  nsamples, nparams)
-    #output=inditek_metropolis(       initial_theta[iChain,:],      )
     output=inditek_metropolis(params_current, food_shelf, temp_shelf, Point_timeslices, shelf_lonlatAge, nsamples, nparams, proof, landShelfOceanMask, landShelfOcean_Lat, landShelfOcean_Lon, LonDeg, mu, sigma, ran_bounded, sigma_prop, n_D, model, active_params)
 
     return (
         output["params_proposed_history"], output["params_accepted_history"],
         output["rss_proposed_history"], output["rss_accepted_history"],
         output["acceptance_history"], output["sigma_prop"],
-        output["D"]
+        output["D"],output["residuals"]
     )
 
 start=time.time()
 
 #MH-MCMC SETUP:
-num_chains=6
-nsamples=5002
-n_D=50
-model='expo'
+num_chains=1
+nsamples=3
+n_D=1
+model='proof'
 
-###########################################################3
-#Define the parameters of each different model to test (open, proof, expo, food, temp)
+#############################################################
+#Define the parameters for each model to be tested (open, proof, expo, food, temp)
 #############################################################
 
-models=["open", "proof", "expo", "food", "temp"]
+models=["proof", "open", "expo", "food", "temp"]
 
 ind_model=models.index(model)
 
 dicts_models=[
-    {"model":"open", 
-    "mu": np.array([161,19,0.035,0.002,2]), 
-    "active_params": [0,1,2, 3, 4],
-    "sigma": np.array([8,1.9,0.00035,0.00001,0.08]), 
-    "ran_initial": np.array([[50,500],[0,50],[0.01,0.1],[0,0.01],[1.2,2.8]]), 
-    "ran_bounded":[[50,1000],[1,150],[0.001,0.1],[0.0001,0.05],[1,3.5]]},
-
     {"model":"proof", 
     "mu": np.array([161,19,0.035,0.002,2]), 
     "active_params": [0,1,2, 3, 4],
     "sigma": np.array([8,1.9,0.00035,0.0003,0.08]), 
     "ran_initial": np.array([[128.8,193.2],[15.2,22.8],[0.028,0.042],[0.0016,0.0024],[1.6,2.4]]), 
+    "ran_bounded":[[50,1000],[1,150],[0.001,0.1],[0.0001,0.05],[1,3.5]]},
+
+    {"model":"open", 
+    "mu": np.array([161,19,0.035,0.002,2]), 
+    "active_params": [0,1,2, 3, 4],
+    "sigma": np.array([8,1.9,0.00035,0.00001,0.08]), 
+    "ran_initial": np.array([[50,500],[0,50],[0.01,0.1],[0,0.01],[1.2,2.8]]), 
     "ran_bounded":[[50,1000],[1,150],[0.001,0.1],[0.0001,0.05],[1,3.5]]},
 
     {"model":"expo", 
@@ -78,39 +76,34 @@ dicts_models=[
 ]
 #Mean of parameters distributions (mu):
 #
-#Kmax_mu = 200; Maximum carrying capacity (maximum number of genera in a point with the greatest food available in the time series)  
+#Kmax_mu = 200; Maximum carrying capacity (maximum number of genera at the point with the greatest food available in the time series)  
 #Kmin_mu = 10; Minimum carrying capacity
-#spec_max_mu = 0.15; Greatest speciation rate according to FoodlimxTemplim  
-#spec_min_mu = 0.005; 
+#spec_max_mu = 0.15; Maximum speciation rate according to FoodlimxTemplim  
+#spec_min_mu = 0.005;  Minimum speciation rate 
 #Q10_mu = 2; Parameter defining the thermal limitation for speciation  
-#ext_intercept_shelf_mu = 0.01; Bbackground extinction in the tropics  
-#ext_slope_mu = 0; Slope of extinction rate according to absolute latitude from 20º
 
 
 mu=dicts_models[ind_model]["mu"]
 
-#Standard deviation of parameters (sigma):  
+#Standard deviation of parameters distributions (sigma):  
 #
 #Kmax_std = 80  
 #Kmin_std = 4
 #spec_max_std = 0.05  
 #spec_min_std = 0.002
 #Q10_std = 0.2  
-#ext_intercept_shelf_std = 0.005  
-#ext_slope_std = NAN
 
 sigma=dicts_models[ind_model]["sigma"]
+
+#Selection of the active parameters, the ones used during that experiment
 active_params=dicts_models[ind_model]["active_params"]
 
-#which parameters to consider with gaussian distribution instead of uniform distribution (no a priori, only bounds: range)
-
-#gaus=np.array([4]) # for now we only believe that Q10 should fall around the value 2 
 
 
 
-########################## Parameter distribution of the search-window to defign the proposal:  
+########################## Parameter distribution of the search window to define the proposal:  
 
-#Starting point of the chains (theta at time 1) found with latinhypercube to efficiently cover the param.distributions:  
+#Starting point of the chains (theta at time 1) found with latinhypercube to efficiently cover the param. distributions:  
 #
 #Kmax_theta = [250,500];    
 #spec_max_theta = [0.1,1.5];  
@@ -142,9 +135,20 @@ sigma_prop=c*sigma
 ran_bounded=dicts_models[ind_model]["ran_bounded"]
 
 nparams=len(mu)
-print("nparams:", nparams)
-#Pre-allocate variables to store results
+print("Number of params:", nparams)
+print("Number of iterations:", nsamples)
+print("Number of chains:", num_chains)
 
+#Pre-allocate variables to store results
+#params_proposed_history: Stores the values of all proposed parameters
+#params_accepted_history: Stores the values of the accepted parameters, if a proposal is rejected, it
+# retains the previously accepted value
+#rss_proposed history: Stores the RSS (Residual Sum of Squares) proposed during each iteration
+#rss_accepted_history: Stores only the accepted RSS, following the same logic as with params_accepted_history
+#D: Stores the diversity value of each grid cell (2978 in total) during each iteration
+#residuals: Stores the residual value of each grid cell during each iteration
+#sigma_new: Stores the variance of the parameter
+#AR_parameter: Stores the acceptance rate of each parameter during each iteration
 
 params_proposed_history = np.zeros([nsamples,nparams, num_chains])
 params_accepted_history = np.zeros([nsamples+1,nparams, num_chains])
@@ -178,7 +182,7 @@ landShelfOcean_Lon=data_Mask['landShelfOcean_Lon']
 landShelfOceanMask=data_Mask['landShelfOceanMask']
 landShelfOceanMask = np.flip(landShelfOceanMask, axis=2)
 
-data_proof=np.load("data/proof_of_concept.npz")
+data_proof=np.load("data/observed_D.npz")
 proof=data_proof[ "proof"]
 
 
@@ -186,6 +190,7 @@ proof=data_proof[ "proof"]
 
 results= Parallel(n_jobs=num_chains)(delayed(run_chain)(i) for i in range(num_chains))
 
+#Stores the values for each variable obtained from the metropolis script
 for iChain, result in enumerate(results):
 
     params_proposed_history[:, :, iChain] = result[0]
@@ -195,8 +200,10 @@ for iChain, result in enumerate(results):
     acceptance_history[:, iChain] = result[4].flatten()
     sigma_new[:,:,iChain]=result[5]
     D[:,:,iChain]=result[6]
+    residuals[:,:,iChain]=result[7]
 
-np.savez(f"output_data/data_indicios_{nsamples}_{model}_4.npz", params_proposed_history=params_proposed_history, params_accepted_history=params_accepted_history, rss_proposed_history=rss_proposed_history, rss_accepted_history=rss_accepted_history, acceptance_history=acceptance_history, D=D, residuals=residuals, sigma_new=sigma_new, AR_parameter=AR_parameter)
+#Save all variables to the final .npz file
+np.savez(f"probita/inditekMCMCoutput_{nsamples}_{model}.npz", params_proposed_history=params_proposed_history, params_accepted_history=params_accepted_history, rss_proposed_history=rss_proposed_history, rss_accepted_history=rss_accepted_history, acceptance_history=acceptance_history, D=D, residuals=residuals, sigma_new=sigma_new, AR_parameter=AR_parameter)
 
 end=time.time()
 print('{:.4f} s'.format(end-start)) 

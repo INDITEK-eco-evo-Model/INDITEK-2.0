@@ -1,6 +1,6 @@
 import scipy.io
 from rhonet import rhonet_evo
-from alphadiv_huer import alphadiv
+from alphadiv import alphadiv
 from gridMean import inditek_gridMean_alphadiv
 import matplotlib.pyplot as plt
 import mat73
@@ -97,4 +97,4 @@ proof=proof+random_values
 
 proof = np.clip(proof,1,None)
 
-np.savez("data/proof_of_concept.npz", proof=proof)
+np.savez("data/observed_D.npz", proof=proof)

@@ -24,7 +24,7 @@ import mat73
 def inditek_gridMean_alphadiv(D_shelf,shelf_lonlatAge,landShelfOcean_Lat,landShelfOcean_Lon, landShelfOceanMask):
 
 
-    #Creates a 2D grid of latitude and longitude values using meshgrid. 
+    #Create a 2D grid of latitude and longitude values using meshgrid. 
 
     [X,Y]=np.meshgrid(landShelfOcean_Lon,landShelfOcean_Lat)#
 
@@ -36,7 +36,7 @@ def inditek_gridMean_alphadiv(D_shelf,shelf_lonlatAge,landShelfOcean_Lat,landShe
     #Mask of the land shelf ocean (LSO) to ignore the land and ocean areas in the grid
     LSOmask=np.transpose(landShelfOceanMask[:,:,landShelfOceanMask.shape[2]-1])
 
-    #Creates the lat and lon arrays for the last time slice of the shelf_lonlatAge array. 
+    #Create the lat and lon arrays for the last time slice of the shelf_lonlatAge array. 
     lat=shelf_lonlatAge[:,shelf_lonlatAge.shape[1]-1,1]#
     lon=shelf_lonlatAge[:,shelf_lonlatAge.shape[1]-1,0]#
     d=D_shelf[:,D_shelf.shape[1]-1]#
@@ -45,39 +45,40 @@ def inditek_gridMean_alphadiv(D_shelf,shelf_lonlatAge,landShelfOcean_Lat,landShe
     
 
 
-    #Selects the latitudes and longitudes that are not NaN (not active points without diversity at time 0Myr) and ignore them.
-    lat=lat[np.isnan(d)==0]#
-    lon=lon[np.isnan(d)==0]  #ingnore NaN (no active points without diversity at time 0Myr)#
-    d=d[np.isnan(d)==0]#
+    #Select and ignore the latitudes and longitudes that are not NaN (inactive points without diversity at 0Myr)
+    lat=lat[np.isnan(d)==0]
+    lon=lon[np.isnan(d)==0]  
+    d=d[np.isnan(d)==0]
 
     
 
 
-    #Linealize the latitudinal and longitudinal points to go for them inside a loop.
+    #Linearize the latitudinal and longitudinal points to iterate over them in a loop.
     lat_idx=np.digitize(lat, lat_edges) - 1
     lon_idx=np.digitize(lon,lon_edges) - 1
 
     grid_idx= lat_idx * X.shape[1] + lon_idx
 
-    #Creates a 2D array of zeros with the same shape as the grid, to store the diversity values.
+    #Create a 2D array of zeros with the same shape as the grid to store diversity values.
     D=np.zeros(X.shape)
     count=np.zeros(X.shape)
 
-    #It goes from all the elements of the grid and adds the diversity values to the corresponding grid cell.
-    #The count array is recovers the number of values added to each grid cell. It is used to calculate the mean diversity value for each of them.
+    #Iterate through all elements of the grid and add diversity valuesw to the corresponding grid cell.
+    #The count array tracks the number of values added to each grid cell to calculate its mean diversity
     for i in range(len(grid_idx)):
         if LSOmask.flat[grid_idx[i]]==1:
             D.flat[grid_idx[i]] += d[i]
             count.flat[grid_idx[i]]+=1
 
 
-    #It divides to calculate the mean diversity value for each cell.
-    D=D/count
+    #Divide to calculate the mean diversity value for each cell, only for active points
+    valid = count > 0
+    D[valid] = D[valid] / count[valid]
 
 
 
 
-    #It just selects the points that are not 1 in the LSOmask (the ones that are not land or ocean) and the points that the diversity is not 0 (the ones that have diversity).
+    #Select only the points that are not 1 in the LSOmask (excluding land/ocean) and where diversity is greater than 0
     D[LSOmask!=1]=np.nan
     D[D==0]=np.nan
 

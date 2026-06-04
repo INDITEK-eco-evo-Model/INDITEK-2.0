@@ -6,13 +6,12 @@ def rhonet_evo(kfood,Kmin,food_shelf,temp_shelf,ext_pattern,Kmax_mean,spec_min_m
     
     data=pd.read_csv('data/rhoExt.csv')
     
-
+    #Load the data with the extinction patterns, to be used later to incorporate the mass extinctions
     rhoExt=data.iloc[:,ext_pattern]
     time=data.iloc[:,0]
-    time_ext=time[rhoExt<0]
+    time_ext=time[rhoExt<0]#Select the times where suffers mass extinctions (rho<0)
 
-    #print(Point_timeslices)
-
+    #Create a matrix with the initial speciation rates (rho) for the shelf, with shape n_pointsxtime_slices (541, from 541MA to 0MA, every 1 million years)
     rho_shelf = np.tile(rhoExt, (shelf_lonlatAge.shape[0], 1))  
 
     #Calculate Carrying Capacity (K) according to the range of greatest and lowest food available in the whole time series, 
@@ -22,13 +21,13 @@ def rhonet_evo(kfood,Kmin,food_shelf,temp_shelf,ext_pattern,Kmax_mean,spec_min_m
     Mfood=np.quantile(a,0.99)
     mfood=np.quantile(a,0.01)
 
-    #Just calculate K_shelf if the model is not "expo", because in that case K does not affect diversity, so it is not necessary to calculate it
+    #Just calculate K_shelf if the model is not "expo", (in expo, K_shelf=infty)
     if model!="expo":
-        #Effective carrying capacity: max N of genera that can be supported in a point according to food at that point and time 
+        #Effective carrying capacity: max N of genera that can be supported at a point according to food at that point and time 
 
         K_shelf=Kmax_mean-(Kmax_mean-Kmin)*((Mfood-food_shelf)/(Mfood-mfood))
 
-        #bounded between Kmax & Kmin (to reset those outlier values within the range)
+        #Bounded between Kmax & Kmin (the maximum and minimum carrying capacity)
 
         K_shelf = K_shelf.clip(Kmin,Kmax_mean)
     else:
@@ -37,39 +36,37 @@ def rhonet_evo(kfood,Kmin,food_shelf,temp_shelf,ext_pattern,Kmax_mean,spec_min_m
     speciation_shelf=np.empty(food_shelf.shape)#empty matrix, same size as food_shelf to asign speciation
 
     for i in range(food_shelf.shape[1]):
-        #Selects the values of temperature that are within the range of the 0.01 and 0.99 quantiles, to avoid outliers
+        #Select the temperature values within the 0.01 and 0.99 quantile range to remove outliers
         a=temp_shelf[:,i]
         Mtemp=np.quantile(a[np.isnan(a)==0],0.99)
         mtemp=np.quantile(a[np.isnan(a)==0],0.01)
-    
-        Qfood_shelf = 1.0
-        Qtemp_shelf = 1.0
+
+        #We initialize Qfood and Qtemp to 1
+        Qfood_shelf = 1.0#Modifier that constrains speciation based on food supply
+        Qtemp_shelf = 1.0#Modifier that constrains speciation based on temperature
         
-        if model!="food":#Just calculate the food limitation if the model is not "food", if the model is food, Qfood=1
-        #Food limitation according to Michaelis-Menten analogous effect on population growth rate according to food availability
-            Qfood_shelf=np.clip(food_shelf[:,i]/(kfood+food_shelf[:,i]),0,1)
-            
-            #bound food to 0-1 range
+        if model!="food":#Calculate the food limitation only if the model is not "food", (if it is "food", Qfood=1)
+
+        #Food limitation according to Michaelis-Menten effect on population growth rate according to food availability
+            Qfood_shelf=np.clip(food_shelf[:,i]/(kfood+food_shelf[:,i]),0,1)#Bounds Qfood to the 0-1 range
         
-        #Thermal limitation according to Eppley curve defining the effect of temperature on metabolic rates and therefore on 
-        # population growth rate according to temperature
+        #Thermal limitation based on the Eppley curve, which defines the effect of temperature on metabolic rates, and consequently, 
+        # on the population growth rate
         
-        if model!="temp":#Just calculate the temperature limitation if the model is not "temp", if the model is temp, Qtemp=1
+        if model!="temp":#Calculate the temperature limitation only if the model is not "temp", (if it is "temp", Qtemp=1)
             EppleyCurve=Q10_mean**((temp_shelf[:,i]-mtemp)/10)
             EppleyCurve_max=Q10_mean**((Mtemp-mtemp)/10)
-            Qtemp_shelf=np.clip(EppleyCurve/EppleyCurve_max,0,1)
-
-            #bound thermal limitation to 0-1 range
+            Qtemp_shelf=np.clip(EppleyCurve/EppleyCurve_max,0,1)#Bounds Qtemp to the 0-1 range
 
         Qlim_shelf=Qfood_shelf*Qtemp_shelf#colimitation of food and temperature combined (product of both)
 
-        # Calculate speciation rates according to food and temperature colimitation
+        #Calculates speciation rates according to food and temperature colimitation
         a=spec_max_mean - (spec_max_mean - spec_min_mean) * (1.0 - Qlim_shelf) #speciation dependent on food and temp limitation (temp limitation bounded to current thermal range, i.e., considering aclimation)
 
-
+        #The speciation rate is calculated for each time slice and then stored in the general vector
         speciation_shelf[:,i]=a
 
-
+    #We only consider net diversification as the combination of speciation rate with mass extinctions
     rho_shelf1 = speciation_shelf
 
     #Incorporate Mass Extinctions and Fill Gaps

@@ -6,13 +6,13 @@ from haversine_distance import haversine_distance
 def dist_fun(shelf_lonlatAge, pos, step, point_pos, lim):
     neighbor_lonlat = shelf_lonlatAge[pos, step, 0:2] 
 
-    dist_pos=haversine_distance(point_pos, neighbor_lonlat)#Calculate the distance to all the points in the area
+    dist_pos=haversine_distance(point_pos, neighbor_lonlat)#Calculate the distance to all points in the area
 
     lim=lim[dist_pos!=0]
-    dist_pos=dist_pos[dist_pos!=0]##Remove the points that are 0 distance (the point itself)
+    dist_pos=dist_pos[dist_pos!=0]##Remove the points that have a distance of 0 (the point itself)
     
-    dist=dist_pos#*dist_temps
-    #From all the points in the area, it selects the nearest one
+    dist=dist_pos
+    #Select the nearest point from all points in the area
     lim=lim[dist==min(dist)]
 
     return lim
@@ -24,26 +24,22 @@ def dist_fun(shelf_lonlatAge, pos, step, point_pos, lim):
 
 def alphadiv_expo(Point_timeslices,shelf_lonlatAge,rho_shelf,latWindow,lonWindow,LonDeg, ext_index):
 
-    pt=Point_timeslices# position of 82 time slices in the 542 Myr (starting from 0 Ma (million tears ago)+1=position 1) to retrieve only that info from the final data matrix
+    pt=Point_timeslices#Position of 82 time slices in the 542 Myr (starting from 0 Ma (million years ago)+1=position 1) 
     pt=np.fliplr(pt).flatten()
 
     Point_timeslices=Point_timeslices[0]
 
-    save_pos1S=[]
-    save_pos2S=[]
-    D0_forced=[]
-    num_while=[]
     # 1. Calculate alpha diversity from points
     D0 = 1 # initialise diversity at time 541 MA with #1 genus area^(-1)
-    D_shelf=np.full([shelf_lonlatAge.shape[0],542], np.nan)
+    D_shelf=np.full([shelf_lonlatAge.shape[0],542], np.nan)#Initial diversity matrix (n_pointsxn_timeslices)
 
 
     count=-1 #time frame resolved (MA) (there are 82 timeframes out of 542MA defined by the Point_timeslices)
     step=0 # 82 time frames (steps in the loop)
-    ts2=Point_timeslices[0]+1 #next timeframe after ts (to fill the gap between both at each loop)
+    ts2=Point_timeslices[0]+1 #next Point_timeslice (to fill the gap between both at each loop)
 
 
-    for ts in Point_timeslices:
+    for ts in Point_timeslices:#current Point_timeslice
 
         count += (ts2-ts)#Update the count variable
 
@@ -56,12 +52,11 @@ def alphadiv_expo(Point_timeslices,shelf_lonlatAge,rho_shelf,latWindow,lonWindow
 
 
 
-        # Initialize diversity for the first timeframe (ts == Point_timeslices(1))
+        # Initialize diversity for the first timeframe (ts == Point_timeslices[1])
         if ts == Point_timeslices[0]:
-            pos1S=[]
-            pos2S=[]
-            D0_element=[]
-            D_shelf[posS, count] = D0 #seed the coastal platform with 1 genus everywhere (to every active point) at time 541Ma
+
+            D_shelf[posS, count] = D0 #Seed the coastal platform with 1 genus everywhere (to every active point) at time 541 Ma
+        
         else:
 
             deltaAgeS = ageS[posS] - shelf_lonlatAge[posS, step - 1, 2] #(age at time ts) - (age at time ts-1)
@@ -70,14 +65,13 @@ def alphadiv_expo(Point_timeslices,shelf_lonlatAge,rho_shelf,latWindow,lonWindow
         # #1# Handle newly inundated shelf points ##
         # Points that didn't exist or were not inundated in time t-1 and are now active
 
-            D0_element=[]
             
 
 
-            pos1S = posS[np.logical_and(np.isnan(deltaAgeS), ageS[posS] <= ts2 - ts)]#Selects the points that didn't exist at time t-1
+            pos1S = posS[np.logical_and(np.isnan(deltaAgeS), ageS[posS] <= ts2 - ts)]#Select the points that didn't exist at time t-1
             pos1S=np.concatenate((pos1S,posS[np.logical_and(shelf_lonlatAge[posS,step-1,2]==0,ageS[posS]<=ts2-ts)]))#Select the points that are 0 years old
 
-            if pos1S.size > 0:#If there are points of this type go through them 1 by 1 to find its nearest neighbour from which receive diversity mimicking inmigration
+            if pos1S.size > 0:#If there are points of this type, loop through them 1 by 1 to find its nearest neighbour from which receive diversity, mimicking inmigration
 
                 for k in range(len(pos1S)): #Iterate over all points of this type
 
@@ -89,17 +83,17 @@ def alphadiv_expo(Point_timeslices,shelf_lonlatAge,rho_shelf,latWindow,lonWindow
                     lon_diff = np.abs(np.abs(point_lonlat[ 1]) - LonDeg[:, 0])  
                     f_diff = np.argmin(lon_diff) 
 
-                    #It normalizes the window size by the degree length at the point latitude to keep a constant window size in km
+                    #Normalize the window size by the degree length at the point's latitude to maintain a constant window size in km
                     lon=lonWindow * LonDeg[f_diff,1]
 
-                    #logical conditions
+                    #Logical conditions
 
                     lonMask = abs(shelf_lonlatAge[posS, step, 0] - point_lonlat[0]) <= lon
                     latMask = abs(shelf_lonlatAge[posS, step, 1] - point_lonlat[1]) <= latWindow
 
 
 
-                    #Get the position for both conditions combined:
+                    #Get the positions where both conditions are met
 
                     lim=np.where(lonMask & latMask)[0]
                     f=np.where(D_shelf[posS[lim],count2]>0)[0]
@@ -108,63 +102,61 @@ def alphadiv_expo(Point_timeslices,shelf_lonlatAge,rho_shelf,latWindow,lonWindow
 
                     
                     if f.size > 0:
-                        #It calls dist_fun to calculate the distance to all the points in the area and selects its nearest neighboor
+                        #Call dist_fun to calculate the distance to all points in the area and select the nearest neighboor
                         lim=dist_fun(shelf_lonlatAge, posS[lim], step, point_lonlat, lim)
 
-                        d=np.nanmean(D_shelf[posS[lim], count2])#The diversity of the point of interest is the average of the diversity of the points in the area (the ones that are not 0 distance)
-                        #ipdb.set_trace()
+                        d=np.nanmean(D_shelf[posS[lim], count2])#The diversity of the point of interest is the average of the diversity of the nearest points (excluding the point itself)
 
                         #Diversity always follows an exponential equation
-                        d=max(D0,d+rho_shelf[pos1S[k],count2+1]*d)#bounded by D0
+                        d=max(D0,d+rho_shelf[pos1S[k],count2+1]*d)#Bounded by D0
                         D_shelf[pos1S[k],count2+1]=d
                     else:
                         D_shelf[pos1S[k], count2+1] = 0
-                #It selects the points that are still 0 after the previous process (the ones that did not receive diversity from any neighbor)
-                huerfanos=pos1S[D_shelf[pos1S, count2+1]==0]
-                D0_element=huerfanos
+                #It selects the points that are still 0 after the previous process (those that did not receive diversity from any neighbor)
+                orphans=pos1S[D_shelf[pos1S, count2+1]==0]
 
-                cambio=True
+                change=True#Initialize a flag to True to track changes; if no changes occur, it becomes False
 
                 while_element=0
                 
-                #It iteratively looks for neighbors of neighbors until all points have received diversity from a neighbor
+                #Iteratively search for neighbors of neighbors until all points have received diversity 
                 #or are forced to be D0 because they are too far from any neighbor
-                while huerfanos.size > 0 and cambio:
+                while orphans.size > 0 and change:
 
-                    cambio=False
+                    change=False
                     while_element+=1
 
                     
-                    #For each point, it looks for the the nearest point that has been colonized during the previous iteration (starting with the neighbors that received diversity from 
-                    # the nearest neighbors in the previous step, then the neighbors of those neighbors, and so on) and receives diversity from it.
-                    for p_idx in huerfanos:
+                    # Search for the nearest colonized point from the previous iteration to transmit diversity
+                    for p_idx in orphans:
 
-                        colonizados_hoy = np.array(pos1S[D_shelf[pos1S, count2+1] > 0])
+                        new_colonized = np.array(pos1S[D_shelf[pos1S, count2+1] > 0])
 
                         point_lonlat = shelf_lonlatAge[p_idx, step, [0,1]]
                         
 
-                        if colonizados_hoy.size>0:
-                            c_coords = shelf_lonlatAge[colonizados_hoy, step, 0:2]
+                        if new_colonized.size>0:
+                            c_coords = shelf_lonlatAge[new_colonized, step, 0:2]#Coordinates of the new colonized point
+                            #If points exist, search for them within a 2.5-degree window
                             lim=np.where(np.logical_and(np.abs(c_coords[:,0]-point_lonlat[0])<=2.5*LonDeg[f_diff,1], np.abs(c_coords[:,1]-point_lonlat[1])<=2.5))[0]
-                            f=np.where(D_shelf[colonizados_hoy[lim],count2+1]>0)[0]
+                            f=np.where(D_shelf[new_colonized[lim],count2+1]>0)[0]
                             lim=lim[f]
 
                             
                             
-                            #If there are any points it starts to looking for them inside a 2.5 degree window
+                            # Select the nearest point among all on the search window
                             if lim.size>0:
 
-                                lim=dist_fun(shelf_lonlatAge, colonizados_hoy[lim], step, point_lonlat, lim)
+                                lim=dist_fun(shelf_lonlatAge, new_colonized[lim], step, point_lonlat, lim)
 
-                                vecino_idx=colonizados_hoy[lim][0]
+                                idx_neighbor=new_colonized[lim][0]
                                 
-                                D_shelf[p_idx,count2+1]=max(D0,D_shelf[vecino_idx,count2+1])
-                                cambio=True
-                        huerfanos=pos1S[D_shelf[pos1S, count2+1]==0]
+                                D_shelf[p_idx,count2+1]=max(D0,D_shelf[idx_neighbor,count2+1])
+                                change=True
+                        #Store the ones that continue without diversity
+                        orphans=pos1S[D_shelf[pos1S, count2+1]==0]
                
                 D_shelf[pos1S, count2+1] = np.maximum(D_shelf[pos1S, count2+1], D0) #force d to be at least D0, 1.
-                num_while.append(while_element)
                     
 
             # #2# Special case of continental shelf points that did not exist in
@@ -181,7 +173,7 @@ def alphadiv_expo(Point_timeslices,shelf_lonlatAge,rho_shelf,latWindow,lonWindow
                 for k in range(len(pos2S)):
                     point_lonlat = [shelf_lonlatAge[pos2S[k], step, 0],shelf_lonlatAge[pos2S[k], step,1]] # point location
 
-                    #   Find points within the spatial window to initialize diversity from, the spatial window has a length of 5, 10, 15 and 30 degrees to find the nearest neighbour
+                    #Find points within the spatial window to initialize diversity from, using windows of 5, 10, 15 and 30 degrees to find the nearest neighbor
                     lim=np.where(np.logical_and(np.abs(shelf_lonlatAge[posS,step,0]-point_lonlat[0])<=5, np.abs(shelf_lonlatAge[posS,step,1]-point_lonlat[1]<=5)))[0]
                     f=np.where(D_shelf[posS[lim],count2]>0)[0]
                     if f.size==0:
@@ -194,28 +186,28 @@ def alphadiv_expo(Point_timeslices,shelf_lonlatAge,rho_shelf,latWindow,lonWindow
                         lim=np.where(np.logical_and(np.abs(shelf_lonlatAge[posS,step,0]-point_lonlat[0]+5)<=30, np.abs(shelf_lonlatAge[posS,step,1]-point_lonlat[1]<=30)))[0]
                         f=np.where(D_shelf[posS[lim],count2]>0)[0]
 
-                    #It calculates the distance to all the points in the area and selects the one with the minimum distance to the point of interest
+                    #Calculate the distance to all points in the area and select the one closest to the point of interest
                     lim=lim[f]
 
                     lim=dist_fun(shelf_lonlatAge, posS[lim], step, point_lonlat, lim)
 
-                    #Then, it calculates the diversity of the point of interest as the average of the diversity of the points in the area (the ones that are not 0 distance), equal to the previous case
+                    #Calculate the diversity of the point of interest as the average diversity of the sorrounding points (excluding itself), same as the previous case
                     d=np.nanmean(D_shelf[posS[lim],count2])
                         
                     if d<D0:
 
-                        d=D0 #force d to be at least D0, 1.
+                        d=D0 #Force d to be at least D0 (1.0)
               
-                    #Calculates diversity following the exponential equation, bounded by D0
-                    d=max(D0,d+rho_shelf[pos2S[k],count2+1]*d)#bounded by D0
-                    D_shelf[pos2S[k],count2+1]=d#bounded by K_shelf (The carrying capacity)
+                    #Calculate diversity following the exponential equation, bounded by D0
+                    d=max(D0,d+rho_shelf[pos2S[k],count2+1]*d)
+                    D_shelf[pos2S[k],count2+1]=d#Store it in the general matrix
                 
 
              #3# Normal points
              
             
 
-            pos3S=posS[np.logical_and(np.logical_and(deltaAgeS>0,np.round(deltaAgeS)<=ts2-ts),shelf_lonlatAge[posS,step-1,2]!=0)] #exisiting points with normal behaviour continue to accumulate diversity
+            pos3S=posS[np.logical_and(np.logical_and(deltaAgeS>0,np.round(deltaAgeS)<=ts2-ts),shelf_lonlatAge[posS,step-1,2]!=0)] #Exisiting points with normal behaviour continue to accumulate diversity
 
 
 
@@ -228,28 +220,28 @@ def alphadiv_expo(Point_timeslices,shelf_lonlatAge,rho_shelf,latWindow,lonWindow
 
             d=D_shelf[pos3S,count2]
 
-            d=np.maximum(D0,d)#bounded by D0
+            d=np.maximum(D0,d)
 
-            #Calculates diversity following the exponential equation, bounded by D0
-            d=np.maximum(D0,d+rho_shelf[pos3S,count2+1]*d)#bounded by D0
+            #Calculate diversity following the exponential equation, bounded by D0
+            d=np.maximum(D0,d+rho_shelf[pos3S,count2+1]*d)
             D_shelf[pos3S,count2+1]=d
                 
             d=np.maximum(d,D0)
 
-            #All active points (the 3 kinds defined by #N# above) accumulate diversity along the time gap
+            #All active points (the three kinds defined by N above) accumulate diversity over the time gap
 
             d=D_shelf[posS,count2+1]
             
-            Myr=len(range(count2+2,count+1))# %time gap to still diversify
+            Myr=len(range(count2+2,count+1))# time gap to still diversify
             scaling=np.ones((d.size,1))
-            scaling[np.isnan(deltaAgeS)==0]=(np.minimum(deltaAgeS[np.isnan(deltaAgeS)==0]-1,Myr)/Myr)[0] #for points that appeared in the middle of the period and 
-            #therefore did not accumulate diversity for the whole period (only during their age gap)
+            scaling[np.isnan(deltaAgeS)==0]=(np.minimum(deltaAgeS[np.isnan(deltaAgeS)==0]-1,Myr)/Myr)[0] #for points that appeared mid-period and 
+            #only accumulated diversity during their specific age gap
             rho=rho_shelf[:,count2+2:count+1]
 
 
             
             
-            if np.any(np.isin(np.arange(count2 + 2, count+1), ext_index)): #for a period with any Myr with a extinction we need to sum Myr step-wise diversity
+            if np.any(np.isin(np.arange(count2 + 2, count+1), ext_index)): #For a period with any Myr with a extinction we need to sum Myr step-wise diversity
 
                 
                 for gap in range(count2+2,count+1):
@@ -257,8 +249,8 @@ def alphadiv_expo(Point_timeslices,shelf_lonlatAge,rho_shelf,latWindow,lonWindow
                     d=D_shelf[posS,gap-1]
 
                     d=np.maximum(d,D0)
-                    #Calculate the effective diversification rate applying the exponential equation for each Myr step, bounded by D0
-                    d=np.maximum(D0,d+d*rho_shelf[posS,gap]*scaling.flatten())#bounded by D0 
+                    #Calculate the effective diversification rate applying the exponential equation for each Myr step, bounded by D0#for a period with any Myr with a extinction we need to sum Myr step-wise diversity
+                    d=np.maximum(D0,d+d*rho_shelf[posS,gap]*scaling.flatten())
                         
                     D_shelf[posS,gap]=d
 
@@ -267,8 +259,8 @@ def alphadiv_expo(Point_timeslices,shelf_lonlatAge,rho_shelf,latWindow,lonWindow
 
             
             
-            else: #for a period without extinction we can apply the logistic growth for as an exponential approaching
-                # saturation by the Myr gap to skip the sum loop
+            else: #for a period without extinction, apply logistic growth as an exponential approach to
+                # saturation over the Myr gap to skip the sum loop
                 
                 
                 d=np.maximum(d,D0)
@@ -277,7 +269,7 @@ def alphadiv_expo(Point_timeslices,shelf_lonlatAge,rho_shelf,latWindow,lonWindow
                 d=np.maximum(d,D0)
 
                 
-                D_shelf[posS,count]=d #included to avoid explosive values due to the explonential growth nature
+                D_shelf[posS,count]=d 
     
 
 
@@ -288,17 +280,15 @@ def alphadiv_expo(Point_timeslices,shelf_lonlatAge,rho_shelf,latWindow,lonWindow
         step = step + 1
 
         #Save positions of type 0 and type 1
-        save_pos2S.append(pos2S)
-        save_pos1S.append(pos1S)  
-        D0_forced.append(D0_element)
 
         
-    # Flip to order from point time slice 1 (0MA) to 542 (541MA) and get the Point time slices
-    #for which the model is resolved (pt)
+    # Flip to order from point time slice 1 (0MA) to 542 (541MA)
 
 
 
     D_shelf=np.flip(D_shelf, axis=1)
+
+    #get the 82 Point time slices for which the model is resolved (pt)
 
     D_shelf=D_shelf[:,pt]
 
