@@ -23,7 +23,7 @@ pip install -r requirements.txt
 
 ## Data dictionary
 
-To run the model, the Python scripts (`.py` and `ipynb`) and the `data` folder must be located in the same dictionary. The `data` folder contains:
+To run the model, the Python scripts (`.py` and `ipynb`) and the `data`, `output_data`, `ìmages` and `tool_for_images` folders must be located in the same dictionary. The `data` folder contains:
 
 - `Point_ages_xyz.mat`: Seafloor age data from the plate-tectonic/paleo-elevation model.
 - `Point_foodtemp.mat`: Food and temperature data from the cGenie earth-system model.
@@ -31,6 +31,11 @@ To run the model, the Python scripts (`.py` and `ipynb`) and the `data` folder m
 - `LonDeg.mat`: Degrees of longitud according to latitude (with a distance equivalent to 1º at the equator). Used to find active nearest neighbours (NN) in a restricted area, mimicking immigration to newly submerged continental platform.
 - `rhoExt.csv`: Mass extinction patterns inputted in the model.
 - `observed_D.npz`: The proof of concept data, the pattern diversity nowadays.
+
+The other folders are used for:
+- `images`: Contains all the images generated for the manuscript.
+- `output_data`: Contains the main outputs of the model scripts.
+- `tool_for_images`: Auxiliary data necessary for the `final_visualization` script.
 
 ## Running the model:
 
@@ -72,24 +77,32 @@ At each iteration, `metropolis_7param.py` calls `principal_proof.py`, which exec
 
 - **`rhonet.py`**: Calculates the diversification rate (_rho_) and effective carrying capacity (_Keff_). It also recordds the time slices affected by mass extinctions (_ext_index_)
 - **`alphadiv.py`**: Computes diversity in the model particles → *D_shelf* and *rho_shelf_eff*
-- **`gridMean.py`**: calculates *D*, the mean diversity in 0.5ºx0.5º grids
-- **`inditek_model_proof.py`**: compares *D* with *observed_D* and calculates the Residual Sum of Squares Error (RSME)
+- **`gridMean.py`**: Calculates _D_, the mean diversity in 0.5ºx0.5º grids
+- **`inditek_model_proof.py`**: Compares the simulated diversity (_D_) with the empirical data _observed_D_ and calculates the Residual Sum of Squares Error (RSS)
 
-The final data are saved in INDITEK_MCMCoutput.npz that contains the following variables:
+## Outputs
 
-- **`Params_proposed_history`**: Stores the proposed parameter values for each iteration of the MCMC method.
-- **`Params_accepted_history`**: Stores the parameter values that were accepted by the MCMC model after comparison with the previously accepted ones.
-- **`rss_proposed_history`**: Records the resulting RSS of the model using the proposed parameters.
-- **`rss_accepted_history`**: Records the RSS of the model using the accepted parameters.
-- **`acceptance_history`**: Equals 1 if the proposed parameters were accepted, and 0 otherwise.
-- **`sigma_new`**: Shows the current value of sigma after it is updated in each iteration.
-- **`D`**: Represents the diversity calculated with the proposed parameters, saved every n_D iterations.
+The final results are saved in `inditekMCMCoutput_{nsamples}_{model}.npz`, which contains the following variables:
+
+- **`params_proposed_history`**: Proposed parameter values for each MCMC iteration.
+- **`params_accepted_history`**: Parameter values that accepted by the MCMC algorithm.
+- **`rss_proposed_history`**: RSS error of the model using the proposed parameters.
+- **`rss_accepted_history`**: RSS error of the model using the accepted parameters.
+- **`acceptance_history`**: Binary flag (1 if proposed parameters were accepted, 0 otherwise).
+- **`sigma_new`**: The updated sigma value at each iteration.
+- **`D`**: Simulated diversity computed with the proposed parameters for each grid cell during each iteration (saved every _n_D_ iterations).
+- **`residuals`**: The residual value of each grid cell during each iteration (saved every _n_D_ iterations).
 
 
 
-# Figures 2 to 5:
+## Visualization
 
-The script **visualization.py** plots the main images of the manuscript: (2) Markov chain trajectories for model parameters (3) Recovery of true eco-evolutionary parameters using Bayesian inversion. (4) Parameter posterior distributions and residual sum of squares across model configurations. It also plots the supplementary figures: (S1-S4) McMC chains for each different Experiment abd (S5) Global diversity map for each different experiment.
+The script `final_visualization.py` plots the main images of the manuscript: 
+- **Figure 2:** Markov chain trajectories for model parameters 
+- **Figure 3:** Recovery of true eco-evolutionary parameters using Bayesian inversion.
+- **Figure 4** Parameter posterior distributions and residual sum of squares across model configurations. It also plots the supplementary figures:
+- **Figures S1-S4** McMC chains for each different experiment 
+- **Figure S5:** Global diversity map for each different experiment.
 
 Further explanation can be found inside each function.
 
