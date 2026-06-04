@@ -100,7 +100,7 @@ Results are saved in `inditekMCMCoutput_{nsamples}_{model}.npz`, containing:
 The script `final_visualization.py` generates the main manuscript figures: 
 - **Figure 2:** Markov chain trajectories for model parameters 
 - **Figure 3:** Recovery of true eco-evolutionary parameters using Bayesian inversion.
-- **Figure 4** Posterior parameter distributions and RSS across model configurations.
+- **Figure 4** Parameter posterior distributions and RSS across model configurations.
 Supplementary figures:
 - **Figures S1-S4** MCMC chains for each different experiment 
 - **Figure S5:** Global diversity map for each different experiment.
