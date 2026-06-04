@@ -22,9 +22,9 @@ def run_chain(iChain):
 start=time.time()
 
 #MH-MCMC SETUP:
-num_chains=1
-nsamples=3
-n_D=1
+num_chains=1#number of chains
+nsamples=3#number of iterations
+n_D=1#how many iterations to store the D and residuals values (e.g., if n_D=10, it stores the D and residuals values every 10 iterations)
 model='proof'
 
 #############################################################
