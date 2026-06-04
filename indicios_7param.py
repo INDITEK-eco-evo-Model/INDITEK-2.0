@@ -146,7 +146,7 @@ print("Number of chains:", num_chains)
 #rss_proposed history: Stores the RSS (Residual Sum of Squares) proposed during each iteration
 #rss_accepted_history: Stores only the accepted RSS, following the same logic as with params_accepted_history
 #D: Stores the diversity value of each grid cell (2978 in total) during each iteration
-#residuals: Stores the residual value of each grid cell during each iteration
+#residuals: Stores the    
 #sigma_new: Stores the variance of the parameter
 #AR_parameter: Stores the acceptance rate of each parameter during each iteration
 
