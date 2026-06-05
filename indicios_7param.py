@@ -203,7 +203,7 @@ for iChain, result in enumerate(results):
     residuals[:,:,iChain]=result[7]
 
 #Save all variables to the final .npz file
-np.savez(f"probita/inditekMCMCoutput_{nsamples}_{model}.npz", params_proposed_history=params_proposed_history, params_accepted_history=params_accepted_history, rss_proposed_history=rss_proposed_history, rss_accepted_history=rss_accepted_history, acceptance_history=acceptance_history, D=D, residuals=residuals, sigma_new=sigma_new, AR_parameter=AR_parameter)
+np.savez(f"outputdata/inditekMCMCoutput_{nsamples}_{model}.npz", params_proposed_history=params_proposed_history, params_accepted_history=params_accepted_history, rss_proposed_history=rss_proposed_history, rss_accepted_history=rss_accepted_history, acceptance_history=acceptance_history, D=D, residuals=residuals, sigma_new=sigma_new, AR_parameter=AR_parameter)
 
 end=time.time()
 print('{:.4f} s'.format(end-start)) 

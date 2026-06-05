@@ -1,8 +1,8 @@
 # INDITEK-2.0
 
-This is the second version of INDITEK, a global model of marine invertebrates diversification ( measured in #genera My^-1)  in the Phanerozoic eon (from 541 Ma to present).
+This is version 2.0 of INDITEK, a global model of marine invertebrates diversification ( measured in #genera My^-1)  throughout the Phanerozoic eon (from 541 Ma to present). In this version, we implement a Bayesian parameterization module that relies on fitting present-day patterns simulated by INDITEK to empirical observations.
 
-This version focuses on diversification on the continental platform, where the majority of marine diversity emerges, in order to speed up the model to simulations of ~30 seconds. This drastic increase in speed is cruciaal, as it allows the implementation of a Bayesian Markov chain Monte Carlo (MCMC) framework. With this new MCMC module, we can run thousands of simulations across multiple chains to infer the probability distributions of the model parameters based on their fit to present-day global observations. Ultimately, this framework enables us tp explore and test different hypotheses explaining biodiversity dynamics in deep time.
+This version focuses on diversification on the continental platform, where the majority of marine diversity is concentrated, in order to reduce computational costs and achieve simulation times of ~30 seconds.  This substantial increase in speed is crucial, as it enables the implementation of a Bayesian Markov chain Monte Carlo (MCMC) framework. With this new MCMC module, we can run thousands of simulations across multiple chains to infer the posterior distributions of model parameters based on their fit to present-day global observations. Ultimately, this framework enables us to explore and test different hypotheses explaining biodiversity dynamics through deep time.
 
 **Funding and Citation**
 
@@ -27,10 +27,10 @@ To run the model, the Python scripts (`.py` and `ipynb`) and the `data`, `output
 
 - `Point_ages_xyz.mat`: Seafloor age data from the plate-tectonic/paleo-elevation model.
 - `Point_foodtemp.mat`: Food and temperature data from the cGenie earth-system model.
-- `landShelfOceanMask.mat`: A 0-2 mask used to distinguish land-shelf-ocean grids.
-- `LonDeg.mat`: Degrees of longitud according to latitude (with a distance equivalent to 1º at the equator). Used to find active nearest neighbours (NN) in a restricted area, mimicking immigration to newly submerged continental platform.
+- `landShelfOceanMask.mat`: A 0-2 mask used to distinguish land, shelf and ocean grids.
+- `LonDeg.mat`: Degrees of longitud as a function of latitude (with a distance equivalent to 1º at the equator). Used to identify active nearest neighbours (NN) within a restricted area, mimicking immigration to newly submerged continental platform.
 - `rhoExt.csv`: Mass extinction patterns inputted in the model.
-- `observed_D.npz`: The proof of concept data, the pattern diversity nowadays.
+- `observed_D.npz`: Observed present-day biodiversity patterns (in this case proof-of-concept simulated data).
 
 The other folders are used for:
 - `images`: Contains all the images generated for the manuscript.
@@ -39,7 +39,7 @@ The other folders are used for:
 
 ## Running the model:
 
-The main execution module is **`indicios_7param.py`**. This script estimates the model parameters probabilistically using a Metropolis-Hastings (M-H) MCMC algorithm. 
+The main execution module is **`indicios_7param.py`**. This script estimates model parameters probabilistically using a Metropolis-Hastings (M-H) MCMC algorithm. 
 
 **Configuration**
 Inside `indicios_7param.py`, you can modify the set-up to run the MCMC framework by defining
@@ -53,15 +53,15 @@ Inside `indicios_7param.py`, you can modify the set-up to run the MCMC framework
   
 - **`open`**: The proof-of-concept experiment using a broader initial parameter range.  
   
-- **`expo`** (Exponential): The exponential growth experiment, which removes the carrying capacity constraint.  
+- **`expo`** (Exponential): Removes the carrying capacity constraint.  
   
-- **`temp`** (No temperature dependence):  The experiment that decouples speciation from temperature.  
+- **`temp`** (No temperature dependence):  Decouples speciation from temperature.  
    
-- **`food`** (No food dependence): The experiment that removes the influence of marine export production on the speciation rate.
+- **`food`** (No food dependence): Removes the influence of marine export production on the speciation rate.
 
 **Modifying Priors**
 
-You can also adjust the prior distributions: the tolerance bounds (proposal outside these bounds are rejected), the mean and the standard deviation. These priors are inferred from existing literature. Additionally, you can modify the applied mass extinction pattern to compare the proof-of-concept against the output.
+You can also adjust the prior distributions of the parameters (Kmax, Kmin, spec_max, spec_min, Q10),  including tolerance bounds (proposal outside these bounds are rejected) `ran_bound` and the range of the initial windoe of the parameters `ran_initial`, as well as the mean `mu` and the standard deviation `sigma`. These priors are inferred from existing literature.
 
 ## Model Architecture and Workflow
 
@@ -75,33 +75,34 @@ To execute the M-H MCMC algorithm, run **`indicios_7param.py`**. This script loa
 **2. Core Diversification Model**
 At each iteration, `metropolis_7param.py` calls `principal_proof.py`, which executes the following sequence:
 
-- **`rhonet.py`**: Calculates the diversification rate (_rho_) and effective carrying capacity (_Keff_). It also recordds the time slices affected by mass extinctions (_ext_index_)
+- **`rhonet.py`**: Calculates the diversification rate (_rho_) and effective carrying capacity (_Keff_). It also recordds time slices affected by mass extinctions (_ext_index_)
 - **`alphadiv.py`**: Computes diversity in the model particles → *D_shelf* and *rho_shelf_eff*
-- **`gridMean.py`**: Calculates _D_, the mean diversity in 0.5ºx0.5º grids
-- **`inditek_model_proof.py`**: Compares the simulated diversity (_D_) with the empirical data _observed_D_ and calculates the Residual Sum of Squares Error (RSS)
+- **`gridMean.py`**: Calculates _D_, the mean diversity in 0.5ºx0.5º grid cells above the global continental shelves.
+- **`inditek_model_proof.py`**: Compares simulated diversity (_D_) with the empirical data (_observed_D_) and calculates the Residual Sum of Squares Error (RSS)
 
 ## Outputs
 
-The final results are saved in `inditekMCMCoutput_{nsamples}_{model}.npz`, which contains the following variables:
+Results are saved in `inditekMCMCoutput_{nsamples}_{model}.npz`, containing:
 
 - **`params_proposed_history`**: Proposed parameter values for each MCMC iteration.
-- **`params_accepted_history`**: Parameter values that accepted by the MCMC algorithm.
-- **`rss_proposed_history`**: RSS error of the model using the proposed parameters.
-- **`rss_accepted_history`**: RSS error of the model using the accepted parameters.
-- **`acceptance_history`**: Binary flag (1 if proposed parameters were accepted, 0 otherwise).
-- **`sigma_new`**: The updated sigma value at each iteration.
-- **`D`**: Simulated diversity computed with the proposed parameters for each grid cell during each iteration (saved every _n_D_ iterations).
-- **`residuals`**: The residual value of each grid cell during each iteration (saved every _n_D_ iterations).
+- **`params_accepted_history`**: Accepted parameter values by the MCMC algorithm at each iteration
+- **`rss_proposed_history`**: RSS for proposed parameters at each iteration
+- **`rss_accepted_history`**: RSS for proposed parameters at each iteration
+- **`acceptance_history`**: Binary flag (1 = accepted, 0 = rejected) at each iteration.
+- **`sigma_new`**: Updated sigma value at each iteration.
+- **`D`**: Simulated diversity computed with the proposed parameters per grid cell (saved every _n_D_ iterations).
+- **`residuals`**: Residuals  per grid cell (saved every _n_D_ iterations).
 
 
 
 ## Visualization
 
-The script `final_visualization.py` plots the main images of the manuscript: 
+The script `final_visualization.py` generates the main manuscript figures: 
 - **Figure 2:** Markov chain trajectories for model parameters 
 - **Figure 3:** Recovery of true eco-evolutionary parameters using Bayesian inversion.
-- **Figure 4** Parameter posterior distributions and residual sum of squares across model configurations. It also plots the supplementary figures:
-- **Figures S1-S4** McMC chains for each different experiment 
+- **Figure 4** Parameter posterior distributions and RSS across model configurations.
+Supplementary figures:
+- **Figures S1-S4** MCMC chains for each different experiment 
 - **Figure S5:** Global diversity map for each different experiment.
 
 Further explanation can be found inside each function.
