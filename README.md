@@ -39,10 +39,10 @@ The other folders are used for:
 
 ## Running the model:
 
-The main execution module is **`indicios_7param.py`**. This script estimates model parameters probabilistically using a Metropolis-Hastings (M-H) MCMC algorithm. 
+The main execution module is **`inditek_parallelMCMC.py`**. This script estimates model parameters probabilistically using a Metropolis-Hastings (M-H) MCMC algorithm. 
 
 **Configuration**
-Inside `indicios_7param.py`, you can modify the set-up to run the MCMC framework by defining
+Inside `inditek_paralelMCMC.py`, you can modify the set-up to run the MCMC framework by defining
 - `num_chains`: The number of parallel MCMC chains. 
 - `nsamples`: The number of iterations.
 - `model`:  The specific experiment you want to run.
@@ -65,19 +65,19 @@ You can also adjust the prior distributions of the parameters (Kmax, Kmin, spec_
 
 ## Model Architecture and Workflow
 
-To execute the M-H MCMC algorithm, run **`indicios_7param.py`**. This script loads the data, sets the priors, prepares the parallel chains, and calls **`metropolis_7param.py`** to run the algorithm:
+To execute the M-H MCMC algorithm, run **`inditek_parallelMCMC.py`**. This script loads the data, sets the priors, prepares the parallel chains, and calls **`inditek_MCMC.py`** to run the algorithm:
 
 **1. MCMC Framework** 
  
-- **`indicios_7param.py`**: Initializes the execution and saves the final results in `inditekMCMCoutput_{nsamples}_{model}.npz`.
-- **`metropolis_7param.py`**: Runs the M-H MCMC algorithm, evaluating the proposed parameters based on the model-observation fit.
+- **`inditek_parallelMCMC.py`**: Initializes the execution and saves the final results in `inditekMCMCoutput_{nsamples}_{model}.npz`.
+- **`inditek_MCMC.py`**: Runs the M-H MCMC algorithm, evaluating the proposed parameters based on the model-observation fit.
 
 **2. Core Diversification Model**
-At each iteration, `metropolis_7param.py` calls `principal_proof.py`, which executes the following sequence:
+At each iteration, `inditek_MCMC.py` calls `inditek_main_2.py`, which executes the following sequence:
 
-- **`rhonet.py`**: Calculates the diversification rate (_rho_) and effective carrying capacity (_Keff_). It also recordds time slices affected by mass extinctions (_ext_index_)
-- **`alphadiv.py`**: Computes diversity in the model particles → *D_shelf* and *rho_shelf_eff*
-- **`gridMean.py`**: Calculates _D_, the mean diversity in 0.5ºx0.5º grid cells above the global continental shelves.
+- **`inditek_rhonet_2.py`**: Calculates the diversification rate (_rho_) and effective carrying capacity (_Keff_). It also recordds time slices affected by mass extinctions (_ext_index_)
+- **`inditek_alphadiv_2.py`**: Computes diversity in the model particles → *D_shelf* and *rho_shelf_eff*
+- **`inditek_gridding_alphadiv.py`**: Calculates _D_, the mean diversity in 0.5ºx0.5º grid cells above the global continental shelves.
 - **`inditek_model_proof.py`**: Compares simulated diversity (_D_) with the empirical data (_observed_D_) and calculates the Residual Sum of Squares Error (RSS)
 
 ## Outputs
