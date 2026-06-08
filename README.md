@@ -61,7 +61,7 @@ Inside `inditek_paralelMCMC.py`, you can modify the set-up to run the MCMC frame
 
 **Modifying Priors**
 
-You can also adjust the prior distributions of the parameters (Kmax, Kmin, spec_max, spec_min, Q10),  including tolerance bounds (proposal outside these bounds are rejected) `ran_bound` and the range of the initial windoe of the parameters `ran_initial`, as well as the mean `mu` and the standard deviation `sigma`. These priors are inferred from existing literature.
+You can also adjust the prior distributions of the parameters (Kmax, Kmin, spec_max, spec_min, Q10),  including tolerance bounds (proposal outside these bounds are rejected) `ran_bound` and the range of the initial window of the parameters `ran_initial`, as well as the mean `mu` and the standard deviation `sigma` of parameters distributions. These priors are inferred from existing literature.
 
 ## Model Architecture and Workflow
 
