@@ -3,20 +3,20 @@ import mat73
 import numpy as np
 import pandas as pd
 import time
-from rhonet import rhonet_evo
-from alphadiv import alphadiv
+from inditek_rhonet_2 import inditek_rhonet
+from inditek_alphadiv_2 import inditek_alphadiv
 from alphadiv_expo import alphadiv_expo
-from gridMean import inditek_gridMean_alphadiv
+from inditek_gridding_alphadiv_2 import inditek_gridding_alphadiv
 from inditek_model_proof import inditek_model_proof
 
 start_time = time.time()
 
 
 #def principal(Kmax_mean, spec_max_mean, Q10_mean, ext_intercept_shelf_mean,ext_slope_mean):
-def principal(kfood, Kmin, food_shelf, temp_shelf, ext_pattern, Kmax_mean, spec_min_mean, spec_max_mean, Q10_mean, ext_intercept_shelf_mean,ext_slope_mean, shelf_lonlatAge, Point_timeslices, latWindow,lonWindow,LonDeg, landShelfOcean_Lat,landShelfOcean_Lon, landShelfOceanMask, proof, model):
+def inditek_main(kfood, Kmin, food_shelf, temp_shelf, ext_pattern, Kmax_mean, spec_min_mean, spec_max_mean, Q10_mean, ext_intercept_shelf_mean,ext_slope_mean, shelf_lonlatAge, Point_timeslices, latWindow,lonWindow,LonDeg, landShelfOcean_Lat,landShelfOcean_Lon, landShelfOceanMask, proof, model):
 
         #############################################################################################
-        # JUST FOR TESTING PURPOSES 161, 19, 0.035, 0.002, 1.75]
+        # JUST FOR TESTING PURPOSES [161, 19, 0.035, 0.002, 1.75]
         ###############################################################################################
         '''
         model="proof"
@@ -67,28 +67,30 @@ def principal(kfood, Kmin, food_shelf, temp_shelf, ext_pattern, Kmax_mean, spec_
         ############################################
         #END OF LOADING DATA
         ############################################
-        #Calls the rhonet_evo function to calculate the rho_shelf (net diversification rate) and K_shelf (carrying capacity) matrices.
-        [rho_shelf,K_shelf, ext_index]=rhonet_evo(kfood,Kmin,food_shelf,temp_shelf,ext_pattern,Kmax_mean,spec_min_mean,spec_max_mean, Q10_mean,ext_intercept_shelf_mean,ext_slope_mean,shelf_lonlatAge,Point_timeslices[0], model)
+        # Call inditek_rhonet_2 function to calculate, for points defining the continental shelves, the rho_shelf (net diversification rate) and K_shelf (carrying capacity) matrices.
+        [rho_shelf,K_shelf, ext_index]=inditek_rhonet(kfood,Kmin,food_shelf,temp_shelf,ext_pattern,Kmax_mean,spec_min_mean,spec_max_mean, Q10_mean,ext_intercept_shelf_mean,ext_slope_mean,shelf_lonlatAge,Point_timeslices[0], model)
 
-       #Call the alphadiv function to calculate the D_shelf(diversity through the years) matrix. 
-       #If the model is "expo", it calls the alphadiv_expo function that does not include the effect of K on diversity.
+        # Call inditek_alphadiv function to calculate D_shelf (diversity in each palaeogeographic point at each time slice) matrix.
+        # If the model is "expo", it calls the alphadiv_expo function that does not include the effect of K on diversity.
         if model=="expo":
             D_shelf=alphadiv_expo(Point_timeslices,shelf_lonlatAge,rho_shelf,latWindow,lonWindow,LonDeg, ext_index)
         else:
-            [rho_shelf_eff,D_shelf]=alphadiv(Point_timeslices,shelf_lonlatAge,rho_shelf,K_shelf,latWindow,lonWindow,LonDeg, ext_index)
+            [rho_shelf_eff,D_shelf]=inditek_alphadiv(Point_timeslices,shelf_lonlatAge,rho_shelf,K_shelf,latWindow,lonWindow,LonDeg, ext_index)
                
-        #Call the inditek_gridMean_alphadiv function to calculate the grid covering the Earth's surface and the mean diversity in each grid cell (D).
-        [X,Y,D]=inditek_gridMean_alphadiv(D_shelf,shelf_lonlatAge,landShelfOcean_Lat,landShelfOcean_Lon, landShelfOceanMask)
+        # Call inditek_gridding_alphadiv function to compute D: mean diversity of points falling in each grid cell covering the continental shelves.
+        [X,Y,D]=inditek_gridding_alphadiv(D_shelf,shelf_lonlatAge,landShelfOcean_Lat,landShelfOcean_Lon, landShelfOceanMask)
         
-        #Select just the active points (those that are not NaN) to compare with the observed diversity.
-        D_nan=D[~np.isnan(D)]
+        
                
-        #Calculates the rss (Residual Sum of Squares) comparing the model diversity with the observed diversity.
-        #This function will be changed soon to include the new data from OBIS.
+        # Model-Observation comparison: Calculates RSS (Residual Sum of Squares) 
+        # This function will be modified in future updates to accomodate for real observations: OBIS data.
         [rss, residuals]=inditek_model_proof(D,proof) 
 
-        #Return the rss, the D_nan (model diversity for the active points) and the residuals (difference between model and observed diversity for the active points).
-        return [rss, D_nan, residuals]
+        # Clean NaN values (empty grid cells) from D 
+        D=D[~np.isnan(D)]
+
+        # Return RSS, D (model diversity for the active points averge by grid cell) and the residuals (difference between model and observed diversity by grid cell).
+        return [rss, D, residuals]
      #elapsed_time = time.time() - start_time
 #
      #print(f"La función tardó {elapsed_time:.4f} segundos.")

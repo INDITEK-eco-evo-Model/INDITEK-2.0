@@ -1,7 +1,7 @@
 import scipy.io
-from rhonet import rhonet_evo
-from alphadiv import alphadiv
-from gridMean import inditek_gridMean_alphadiv
+from inditek_rhonet_2 import inditek_rhonet
+from inditek_alphadiv_2 import inditek_alphadiv
+from inditek_gridding_alphadiv_2 import inditek_gridding_alphadiv
 import matplotlib.pyplot as plt
 import mat73
 import numpy as np
@@ -71,10 +71,10 @@ landShelfOceanMask = np.flip(landShelfOceanMask, axis=2)
 model="proof"
 
 #Calls the rhonet_evo function to calculate the rho_shelf (net diversification rate) and K_shelf (carrying capacity) matrices.
-[rho_shelf,K_shelf, ext_index]=rhonet_evo(kfood,params_proposed[1],food_shelf,temp_shelf,ext_pattern,params_proposed[0],params_proposed[3],params_proposed[2], params_proposed[4],params_proposed[3],params_proposed[4],shelf_lonlatAge,Point_timeslices[0], model)
+[rho_shelf,K_shelf, ext_index]=inditek_rhonet(kfood,params_proposed[1],food_shelf,temp_shelf,ext_pattern,params_proposed[0],params_proposed[3],params_proposed[2], params_proposed[4],params_proposed[3],params_proposed[4],shelf_lonlatAge,Point_timeslices[0], model)
 
 #Calls the alphadiv function to calculate the D (current diversity) and D_shelf(diversity through the years) matrix. 
-[rho_shelf_eff,D_shelf]=alphadiv(Point_timeslices,shelf_lonlatAge,rho_shelf,K_shelf,latWindow,lonWindow,LonDeg, ext_index)
+[rho_shelf_eff,D_shelf]=inditek_alphadiv(Point_timeslices,shelf_lonlatAge,rho_shelf,K_shelf,latWindow,lonWindow,LonDeg, ext_index)
 
 #If you want to plot the map, you call the function to plot it here
 #for i in range(D.shape[2]):
@@ -84,7 +84,7 @@ model="proof"
 
 #Calls the inditek_gridMean_alphadiv function to calculate the grid that covers the earth surface and the mean of the diversity in each grid cell.
 
-[X, Y, proof]=inditek_gridMean_alphadiv(D_shelf,shelf_lonlatAge,landShelfOcean_Lat,landShelfOcean_Lon, landShelfOceanMask)
+[X, Y, proof]=inditek_gridding_alphadiv(D_shelf,shelf_lonlatAge,landShelfOcean_Lat,landShelfOcean_Lon, landShelfOceanMask)
 
 #Here the random Gaussian error is created
 mu=0

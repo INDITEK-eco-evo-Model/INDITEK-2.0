@@ -22,7 +22,7 @@ def dist_fun(shelf_lonlatAge, pos, step, point_pos, lim):
 
 
 
-def alphadiv(Point_timeslices,shelf_lonlatAge,rho_shelf,K_shelf,latWindow,lonWindow,LonDeg, ext_index):
+def inditek_alphadiv(Point_timeslices,shelf_lonlatAge,rho_shelf,K_shelf,latWindow,lonWindow,LonDeg, ext_index):
 
     pt=Point_timeslices#Position of 82 time slices in the 542 Myr (starting from 0 Ma (million years ago)+1=position 1) 
     pt=np.fliplr(pt).flatten()

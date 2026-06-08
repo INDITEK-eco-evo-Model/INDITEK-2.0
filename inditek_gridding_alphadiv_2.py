@@ -21,7 +21,7 @@ import mat73
 
 ##############################################
 
-def inditek_gridMean_alphadiv(D_shelf,shelf_lonlatAge,landShelfOcean_Lat,landShelfOcean_Lon, landShelfOceanMask):
+def inditek_gridding_alphadiv(D_shelf,shelf_lonlatAge,landShelfOcean_Lat,landShelfOcean_Lon, landShelfOceanMask):
 
 
     #Create a 2D grid of latitude and longitude values using meshgrid. 
