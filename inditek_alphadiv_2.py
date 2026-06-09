@@ -4,6 +4,8 @@ from haversine_distance import haversine_distance
 
 
 def dist_fun(shelf_lonlatAge, pos, step, point_pos, lim):
+    '''
+    This function calculates the nearest neighbours'''
     neighbor_lonlat = shelf_lonlatAge[pos, step, 0:2] 
 
     dist_pos=haversine_distance(point_pos, neighbor_lonlat)#Calculate the distance to all the points in the area
@@ -24,15 +26,49 @@ def dist_fun(shelf_lonlatAge, pos, step, point_pos, lim):
 
 def inditek_alphadiv(Point_timeslices,shelf_lonlatAge,rho_shelf,K_shelf,latWindow,lonWindow,LonDeg, ext_index):
 
+    '''
+    Calculate the diversity following the differential equation:  ∂D/ ∂t = D ρ (1-D/K)
+
+    PARAMETERS
+    -----------
+    Point_timeslices: array (1xn_time)
+        Age of each time slice
+    shelf_lonlatAge : array (n_pointsx n_time x 2)
+        Longitude and latitude for each point through time
+    rho_shelf: array (n_points x n_time)
+        Net diversification rate values for each active point and time slice
+    K_shelf: array (n_points x n_time)
+        Carrying capacity values for each active point and time slice
+    lonWindow: constant value
+        distance in degrees to search for particles from which diversity is "migrated" into the new coastal particles
+    latWindow: constant value
+        same but for latitude
+    LonDeg: array (361x2)
+        Degrees of longitud as a function of latitude (with a distance equivalent to 1º at the equator)
+    ext_index: array
+        Index of mass extinction event
+
+
+    RETURNS
+    -----------
+    D_shelf: array (n_points x n_time)
+        Diversity values for each spatial point through time.
+    rho_shelf_eff: array (n_points x n_time)
+        effective diversification rate that results from applying the logistic equation to the diversification rate (rho_shelf),
+        calculated as ρ (1-D/K)
+    '''
+
     pt=Point_timeslices#Position of 82 time slices in the 542 Myr (starting from 0 Ma (million years ago)+1=position 1) 
     pt=np.fliplr(pt).flatten()
 
-    Point_timeslices=Point_timeslices[0]
+    Point_timeslices=Point_timeslices[0]#Flat the vector
 
-    # 1. Calculate alpha diversity from points
+    
     D0 = 1 # initialise diversity at time 541 MA with #1 genus area^(-1)
-    D_shelf=np.full([shelf_lonlatAge.shape[0],542], np.nan)#Initial diversity matrix (n_pointsxn_timeslices)
-    rho_shelf_eff=np.full([shelf_lonlatAge.shape[0],542], np.nan)#Initial effective net diversification rate matrix (n_pointsxn_timeslices)
+
+    #Initialize diversity and effective net diversification rate matrix
+    D_shelf=np.full([shelf_lonlatAge.shape[0],542], np.nan) # (n_pointsxn_timeslices)
+    rho_shelf_eff=np.full([shelf_lonlatAge.shape[0],542], np.nan) # (n_pointsxn_timeslices)
 
 
     count=-1 #time frame resolved (MA) (there are 82 timeframes out of 542MA defined by the Point_timeslices)
@@ -65,11 +101,7 @@ def inditek_alphadiv(Point_timeslices,shelf_lonlatAge,rho_shelf,K_shelf,latWindo
         ############## Different kinds of points are treated a bit different to diversify:
         # #1# Handle newly inundated shelf points ##
         # Points that didn't exist or were not inundated in time t-1 and are now active
-
-            D0_element=[]
             
-
-
             pos1S = posS[np.logical_and(np.isnan(deltaAgeS), ageS[posS] <= ts2 - ts)]#Select the points that didn't exist at time t-1
             pos1S=np.concatenate((pos1S,posS[np.logical_and(shelf_lonlatAge[posS,step-1,2]==0,ageS[posS]<=ts2-ts)]))#Select the points that are 0 years old
 
@@ -103,6 +135,8 @@ def inditek_alphadiv(Point_timeslices,shelf_lonlatAge,rho_shelf,K_shelf,latWindo
                     lim = lim[f]
 
                     
+                    ##############Mimck diversity from nearest points
+
                     if f.size > 0:
                         #Call dist_fun to calculate the distance to all points in the area and select the nearest neighboor
                         lim=dist_fun(shelf_lonlatAge, posS[lim], step, point_lonlat, lim)
@@ -110,6 +144,8 @@ def inditek_alphadiv(Point_timeslices,shelf_lonlatAge,rho_shelf,K_shelf,latWindo
                         d=min(np.nanmean(D_shelf[posS[lim], count2]),K_shelf[pos1S[k],step])#The diversity of the point of interest is the average of the diversity of the nearest points (excluding the point itself)
 
                         #If it is a moment of extinction, the diversity is calculated using the exponential equation
+
+                        #####Apply differential equation to calculate diversity
 
                         if count2+1 in ext_index:
                             d=max(D0,d+rho_shelf[pos1S[k],count2+1]*d)#bounded by D0
@@ -124,7 +160,6 @@ def inditek_alphadiv(Point_timeslices,shelf_lonlatAge,rho_shelf,K_shelf,latWindo
                 
                 #It selects the points that are still 0 after the previous process (those that did not receive diversity from any neighbor)
                 orphans=pos1S[D_shelf[pos1S, count2+1]==0]
-                D0_element=orphans
 
                 change=True#Initialize a flag to True to track changes; if no changes occur, it becomes False
 
@@ -149,7 +184,7 @@ def inditek_alphadiv(Point_timeslices,shelf_lonlatAge,rho_shelf,K_shelf,latWindo
                         #If there are any points it starts to looking for them inside a 2.5 degree window
                         if new_colonized.size>0:
                             c_coords = shelf_lonlatAge[new_colonized, step, 0:2]#Coordinates of the new colonized point
-                            #If points exist, search for them within a 2.5-degree window
+                            #If there are points of this type, search for them within a 2.5-degree window
                             lim=np.where(np.logical_and(np.abs(c_coords[:,0]-point_lonlat[0])<=2.5*LonDeg[f_diff,1], np.abs(c_coords[:,1]-point_lonlat[1])<=2.5))[0]
                             f=np.where(D_shelf[new_colonized[lim],count2+1]>0)[0]
                             lim=lim[f]
@@ -159,8 +194,9 @@ def inditek_alphadiv(Point_timeslices,shelf_lonlatAge,rho_shelf,K_shelf,latWindo
 
                                 lim=dist_fun(shelf_lonlatAge, new_colonized[lim], step, point_lonlat, lim)
 
-                                idx_neighbor=new_colonized[lim][0]
+                                idx_neighbor=new_colonized[lim][0]#Select the index of the nearest neighbour
                                 
+                                #Mimick the diversification of the nearest neighbor to the active point, bounded by 1.
                                 D_shelf[p_idx,count2+1]=max(D0,D_shelf[idx_neighbor,count2+1])
                                 change=True
                         orphans=pos1S[D_shelf[pos1S, count2+1]==0]
@@ -180,9 +216,12 @@ def inditek_alphadiv(Point_timeslices,shelf_lonlatAge,rho_shelf,K_shelf,latWindo
             if pos2S.size > 0:
 
                 for k in range(len(pos2S)):
+
+                    ###### Find nearest point
+
                     point_lonlat = [shelf_lonlatAge[pos2S[k], step, 0],shelf_lonlatAge[pos2S[k], step,1]] # point location
 
-                    #Find points within the spatial window to initialize diversity from, using windows of 5, 10, 15 and 30 degrees to find the nearest neighbor
+                    # Find points within the spatial window to initialize diversity from, using windows of 5, 10, 15 and 30 degrees to find the nearest neighbor
                     lim=np.where(np.logical_and(np.abs(shelf_lonlatAge[posS,step,0]-point_lonlat[0])<=5, np.abs(shelf_lonlatAge[posS,step,1]-point_lonlat[1]<=5)))[0]
                     f=np.where(D_shelf[posS[lim],count2]>0)[0]
                     if f.size==0:
@@ -195,7 +234,7 @@ def inditek_alphadiv(Point_timeslices,shelf_lonlatAge,rho_shelf,K_shelf,latWindo
                         lim=np.where(np.logical_and(np.abs(shelf_lonlatAge[posS,step,0]-point_lonlat[0]+5)<=30, np.abs(shelf_lonlatAge[posS,step,1]-point_lonlat[1]<=30)))[0]
                         f=np.where(D_shelf[posS[lim],count2]>0)[0]
 
-                    #Calculate the distance to all points in the area and select the one closest to the point of interest
+                    # Calculate the distance to all points in the area and select the one closest to the point of interest
                     lim=lim[f]
 
                     lim=dist_fun(shelf_lonlatAge, posS[lim], step, point_lonlat, lim)
@@ -209,13 +248,13 @@ def inditek_alphadiv(Point_timeslices,shelf_lonlatAge,rho_shelf,K_shelf,latWindo
 
                         d=D0 #Force d to be at least D0 (1.0)
                         
+                    
+                    ##### Apply differential equation to calculate diversity, same as before
 
-                       
-                        #equal to the previous case
                     if count2+1 in ext_index:# extinction period and exponential equation
 
-                        d=max(D0,d+rho_shelf[pos2S[k],count2+1]*d)#bounded by D0
-                        D_shelf[pos2S[k],count2+1]=min(K_shelf[pos2S[k],step],d)#bounded by K_shelf (The carrying capacity)
+                        d=max(D0,d+rho_shelf[pos2S[k],count2+1]*d) # bounded by D0
+                        D_shelf[pos2S[k],count2+1]=min(K_shelf[pos2S[k],step],d) # bounded by K_shelf (The carrying capacity)
                 
                     else: # normal diversification period and logistic equation
 
@@ -225,14 +264,9 @@ def inditek_alphadiv(Point_timeslices,shelf_lonlatAge,rho_shelf,K_shelf,latWindo
 
             
 
-             #3# Normal points
-             
+            #3# Normal points
             
-
             pos3S=posS[np.logical_and(np.logical_and(deltaAgeS>0,np.round(deltaAgeS)<=ts2-ts),shelf_lonlatAge[posS,step-1,2]!=0)] #Exisiting points with normal behaviour continue to accumulate diversity
-
-
-
 
             #boundaries between the carrying capacity (K_shelf) and D0 (1 genus area^(-1))
 
@@ -244,8 +278,10 @@ def inditek_alphadiv(Point_timeslices,shelf_lonlatAge,rho_shelf,K_shelf,latWindo
 
             d=np.maximum(D0,d)#bounded by D0
 
-            if count2+1 in ext_index:#if suffers an extinction, it follows an exponential equation
-                d=np.maximum(D0,d+rho_shelf[pos3S,count2+1]*d)#bounded by D0
+            #Apply differential equation to calculate diversity
+            
+            if count2+1 in ext_index: #if suffers an extinction, it follows an exponential equation
+                d=np.maximum(D0,d+rho_shelf[pos3S,count2+1]*d) #bounded by D0
                 D_shelf[pos3S,count2+1]=np.minimum(K_shelf[pos3S,step],d)#bounded by K_shelf (The carrying capacity)
                 
 
@@ -258,7 +294,6 @@ def inditek_alphadiv(Point_timeslices,shelf_lonlatAge,rho_shelf,K_shelf,latWindo
                 d=np.fmin(K_shelf[pos3S,step],d+d*rho_shelf[pos3S,count2+1]*(1-(d/K_shelf[pos3S,step])))
                 
                 D_shelf[pos3S,count2+1]=np.maximum(D0,d) 
-                z=D_shelf[pos3S, count2+1]
                 
                 
                 
@@ -271,11 +306,9 @@ def inditek_alphadiv(Point_timeslices,shelf_lonlatAge,rho_shelf,K_shelf,latWindo
             
             Myr=len(range(count2+2,count+1))# time gap to still diversify
             scaling=np.ones((d.size,1))
-            scaling[np.isnan(deltaAgeS)==0]=(np.minimum(deltaAgeS[np.isnan(deltaAgeS)==0]-1,Myr)/Myr)[0] #for points that appeared mid-period and 
+            #for points that appeared mid-period and 
             #only accumulated diversity during their specific age gap
-            rho=rho_shelf[:,count2+2:count+1]
-
-            #ipdb.set_trace()
+            scaling[np.isnan(deltaAgeS)==0]=(np.minimum(deltaAgeS[np.isnan(deltaAgeS)==0]-1,Myr)/Myr)[0] 
 
             
             
@@ -309,8 +342,7 @@ def inditek_alphadiv(Point_timeslices,shelf_lonlatAge,rho_shelf,K_shelf,latWindo
 
             
             
-            else: #for a period without extinction, apply logistic growth as an exponential approach to
-                    # saturation over the Myr gap to skip the sum loop
+            else: #for a period without extinction, apply logistic growth with an exponential approach to skip the sum loop
                 
                 
 
@@ -338,11 +370,11 @@ def inditek_alphadiv(Point_timeslices,shelf_lonlatAge,rho_shelf,K_shelf,latWindo
 
     D_shelf=np.flip(D_shelf, axis=1)
 
-    #get the 82 Point time slices for which the model is resolved (pt)
+    # Get the 82 Point time slices for which the model is resolved (pt)
 
     D_shelf=D_shelf[:,pt]
 
-#% Flip back once the point time slices for which the model is resolved are compiled
+    # Flip back once the point time slices for which the model is resolved are compiled
     D_shelf=np.flip(D_shelf, axis=1)
 
     #Do the same for the rho_shelf_eff matrix
@@ -354,9 +386,7 @@ def inditek_alphadiv(Point_timeslices,shelf_lonlatAge,rho_shelf,K_shelf,latWindo
 
 
     #To save the data in a .npz file for tests
-    #np.savez("datos_comprobacion_alphadiv.npz", z=z, D_shelf=D_shelf, scaling=scaling)
-
-    #print(D_shelf[399,2])
+    #np.savez("datos_comprobacion_alphadiv.npz", D_shelf=D_shelf, scaling=scaling)
     
 
     return rho_shelf_eff, D_shelf
