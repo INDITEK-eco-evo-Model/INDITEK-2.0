@@ -5,13 +5,16 @@ from haversine_distance import haversine_distance
 
 def dist_fun(shelf_lonlatAge, pos, step, point_pos, lim):
     '''
-    This function calculates the nearest neighbours'''
+    This function calculates the active nearest neighbours at time step within a given area (pos= active points within the search area of NN)
+    '''
     neighbor_lonlat = shelf_lonlatAge[pos, step, 0:2] 
+    
+    # Calculate the distance to all the active points within the area defined by lonMask & latMask
+    #  (being lim the position of the active points within the area)
 
-    dist_pos=haversine_distance(point_pos, neighbor_lonlat)#Calculate the distance to all the points in the area
-
+    dist_pos=haversine_distance(point_pos, neighbor_lonlat)
     lim=lim[dist_pos!=0]
-    dist_pos=dist_pos[dist_pos!=0]##Remove the points that have a distance of 0 (the point itself)
+    dist_pos=dist_pos[dist_pos!=0]# Remove the points that have a distance of 0 (the point itself)
 
     dist=dist_pos
     #Select the nearest point from all points in the area
@@ -39,14 +42,14 @@ def inditek_alphadiv(Point_timeslices,shelf_lonlatAge,rho_shelf,K_shelf,latWindo
         Net diversification rate values for each active point and time slice
     K_shelf: array (n_points x n_time)
         Carrying capacity values for each active point and time slice
-    lonWindow: constant value
+    lonWindow: constant value to implement recolonization of newly submerged points from NN
         distance in degrees to search for particles from which diversity is "migrated" into the new coastal particles
     latWindow: constant value
         same but for latitude
     LonDeg: array (361x2)
-        Degrees of longitud as a function of latitude (with a distance equivalent to 1º at the equator)
+        Degrees of longitud as a function of latitude (with a distance equivalent to 1º at the equator) to correct the size of the seach window for recolonization
     ext_index: array
-        Index of mass extinction event
+        Index of mass extinction events (resolved to 1 Myr)
 
 
     RETURNS
@@ -58,30 +61,34 @@ def inditek_alphadiv(Point_timeslices,shelf_lonlatAge,rho_shelf,K_shelf,latWindo
         calculated as ρ (1-D/K)
     '''
 
-    pt=Point_timeslices#Position of 82 time slices in the 542 Myr (starting from 0 Ma (million years ago)+1=position 1) 
-    pt=np.fliplr(pt).flatten()
+    pt=Point_timeslices # Position of 82 time slices in the 542 Myr (starting from 0 Ma (million years ago)+1=position 1) 
+    pt=np.fliplr(pt).flatten() # Flip from 542 MA to 0  to accumulate diversity forward
 
-    Point_timeslices=Point_timeslices[0]#Flat the vector
+    Point_timeslices=Point_timeslices[0] # flat the vector
 
     
-    D0 = 1 # initialise diversity at time 541 MA with #1 genus area^(-1)
-
-    #Initialize diversity and effective net diversification rate matrix
+    D0 = 1 # initialise diversity at time 541 MA with #1 genus at every active point within that 1sr time frame
+    # Initialize diversity and effective net diversification rate matrix
     D_shelf=np.full([shelf_lonlatAge.shape[0],542], np.nan) # (n_pointsxn_timeslices)
     rho_shelf_eff=np.full([shelf_lonlatAge.shape[0],542], np.nan) # (n_pointsxn_timeslices)
 
 
-    count=-1 #time frame resolved (MA) (there are 82 timeframes out of 542MA defined by the Point_timeslices)
+    count=-1 # time frame resolved (MA) (there are 82 timeframes out of 542MA defined by the Point_timeslices)
     step=0 # 82 time frames (steps in the loop)
-    ts2=Point_timeslices[0]+1 #next timeframe after ts (to fill the gap between both at each loop)
+    # ts2: next timeframe after ts
+    # in order to fill the gap between both at each loop 
+    # (the model accumulates diversity every Myr and points can activate at any time within the gap from ts to ts2)
+    ts2=Point_timeslices[0]+1 
 
 
-    for ts in Point_timeslices:#current Point_timeslice
+    for ts in Point_timeslices:# current Point_timeslice
 
-        count += (ts2-ts)#Update the count variable
+        count += (ts2-ts) # Update the count variable to track the 82 resolved time slices
 
-        #Get ages and active point positions from shelf data (lonlatAge dimensions: pointsxtimeframesx[longitude,latitude,age])
+        #Get ages of points in the time slice (time submerged until the step time slice)
         ageS = shelf_lonlatAge[:, step, 2]
+
+        # active point positions from shelf data (points that exist=are submerged, within the time gap (ageS>0))
         posS=np.where(np.logical_and(~np.isnan(ageS), ageS>0))[0]
 
         
@@ -92,81 +99,87 @@ def inditek_alphadiv(Point_timeslices,shelf_lonlatAge,rho_shelf,K_shelf,latWindo
         # Initialize diversity for the first timeframe (ts == Point_timeslices[1])
         if ts == Point_timeslices[0]:
 
-            D_shelf[posS, count] = D0 #Seed the coastal platform with 1 genus everywhere (to every active point) at time 541 Ma
+            D_shelf[posS, count] = D0 # Seed the coastal platform with 1 genus everywhere (to every active point) at time 541 Ma
         
         else:
 
-            deltaAgeS = ageS[posS] - shelf_lonlatAge[posS, step - 1, 2] #(age at time ts) - (age at time ts-1)
+            deltaAgeS = ageS[posS] - shelf_lonlatAge[posS, step - 1, 2] # (age at time ts) - (age at time ts-1) to get the Myr that the point is active during the time gap)
 
-        ############## Different kinds of points are treated a bit different to diversify:
+        ############## Different kind of points are treated a bit different to diversify: 
+        # (the paleotectonic model provides points of different nature, e.g., occasionally points made be added for density reasons)
+
         # #1# Handle newly inundated shelf points ##
+
         # Points that didn't exist or were not inundated in time t-1 and are now active
             
-            pos1S = posS[np.logical_and(np.isnan(deltaAgeS), ageS[posS] <= ts2 - ts)]#Select the points that didn't exist at time t-1
-            pos1S=np.concatenate((pos1S,posS[np.logical_and(shelf_lonlatAge[posS,step-1,2]==0,ageS[posS]<=ts2-ts)]))#Select the points that are 0 years old
+            pos1S = posS[np.logical_and(np.isnan(deltaAgeS), ageS[posS] <= ts2 - ts)] # Select the points that didn't exist at time t-1
+            pos1S=np.concatenate((pos1S,posS[np.logical_and(shelf_lonlatAge[posS,step-1,2]==0,ageS[posS]<=ts2-ts)])) # Select the points that were 0 years old at time step -1
 
-            if pos1S.size > 0:#If there are points of this type, loop through them 1 by 1 to find its nearest neighbour from which receive diversity, mimicking inmigration
+            if pos1S.size > 0: # If there are points of this type, loop through them 1 by 1 to find its nearest neighbour (active NN) from which being recolonized, mimicking inmigration after newly inundation
 
                 for k in range(len(pos1S)): #Iterate over all points of this type
 
 
                     point_lonlat = shelf_lonlatAge[pos1S[k], step, [0,1]] # point location
 
-                    # Find points within the spatial window to initialize diversity from
+                    # Find the latitude band of the point
 
                     lon_diff = np.abs(np.abs(point_lonlat[ 1]) - LonDeg[:, 0])  
                     f_diff = np.argmin(lon_diff) 
 
-                    #Normalize the window size by the degree length at the point's latitude to maintain a constant window size in km
+                    # Normalize the search window size in degrees according to the latitude to maintain a constant window size in km
                     lon=lonWindow * LonDeg[f_diff,1]
 
-                    #Logical conditions
+                    # Find points within the spatial window to initialize diversity, mimicking recolonization
 
                     lonMask = abs(shelf_lonlatAge[posS, step, 0] - point_lonlat[0]) <= lon
                     latMask = abs(shelf_lonlatAge[posS, step, 1] - point_lonlat[1]) <= latWindow
 
-
-
-                    #Get the positions where both conditions are met
-
                     lim=np.where(lonMask & latMask)[0]
+
+                    #Select the index of the active points
                     f=np.where(D_shelf[posS[lim],count2]>0)[0]
                     
                     lim = lim[f]
 
                     
-                    ##############Mimck diversity from nearest points
+                    # Find and import NN diversity within the selected points
 
                     if f.size > 0:
                         #Call dist_fun to calculate the distance to all points in the area and select the nearest neighboor
                         lim=dist_fun(shelf_lonlatAge, posS[lim], step, point_lonlat, lim)
+                        
+                        # The diversity of the point of interest is the average of the diversity of the nearest points
+                        #  (excluding the point itself) bounded by the carring capacity of the point (mimicking local extinction)
+                        d=min(np.nanmean(D_shelf[posS[lim], count2]),K_shelf[pos1S[k],step])
 
-                        d=min(np.nanmean(D_shelf[posS[lim], count2]),K_shelf[pos1S[k],step])#The diversity of the point of interest is the average of the diversity of the nearest points (excluding the point itself)
+                        
 
-                        #If it is a moment of extinction, the diversity is calculated using the exponential equation
+                        #####Apply differential equation to calculate diversity within the gap (count2 Myr)
 
-                        #####Apply differential equation to calculate diversity
-
+                        # If it is a moment of extinction, the diversity is reduced and thus we ignore the carrying capacity
                         if count2+1 in ext_index:
-                            d=max(D0,d+rho_shelf[pos1S[k],count2+1]*d)#bounded by D0
-                            D_shelf[pos1S[k],count2+1]=min(K_shelf[pos1S[k],step],d)#bounded by K_shelf (carrying capacity)
+                            d=max(D0,d+rho_shelf[pos1S[k],count2+1]*d) # bounded by D0 to avoid diversity < 1
+                            D_shelf[pos1S[k],count2+1]=min(K_shelf[pos1S[k],step],d) # bounded by K_shelf (carrying capacity) to account for cases in which food at step time slice does not support the derived diversity  from step -1
 
-                        else: #If it is not a moment of extinction, the diversity is calculated using the logistic equation
+                        else: # If it is not a moment of extinction, the diversity is calculated using the logistic equation
 
-                            d=min(K_shelf[pos1S[k],step],d+rho_shelf[pos1S[k],count2+1]*d*(max(0,1-(d/K_shelf[pos1S[k],step])))) 
-                            D_shelf[pos1S[k],count2+1]=max(D0,d)
+                            d=min(K_shelf[pos1S[k],step],d+rho_shelf[pos1S[k],count2+1]*d*(max(0,1-(d/K_shelf[pos1S[k],step])))) #bounded by K
+                            D_shelf[pos1S[k],count2+1]=max(D0,d) #bounded by D0
+
                     else:
-                        D_shelf[pos1S[k], count2+1] = 0
+                        D_shelf[pos1S[k], count2+1] = 0 # points for which we haven't found active NN (orphans)
                 
-                #It selects the points that are still 0 after the previous process (those that did not receive diversity from any neighbor)
+                # Define the position of the orphans to recolonize from the newly colonized points (iterative procedure until all points are recolonized or are too isolated)
                 orphans=pos1S[D_shelf[pos1S, count2+1]==0]
 
-                change=True#Initialize a flag to True to track changes; if no changes occur, it becomes False
+                change=True # Initialize a flag = True to track changes; if no changes occur, flag = False
 
                 while_element=0
                 
-                #Iteratively search for neighbors of neighbors until all points have received diversity 
-                #or are forced to be D0 because they are too far from any neighbor
+                # Iteratively search for neighbors of neighbors until all points have received diversity 
+                # or are forced to be D0 because they are too far from any neighbor
+
                 while orphans.size > 0 and change:
 
                     change=False
@@ -181,35 +194,36 @@ def inditek_alphadiv(Point_timeslices,shelf_lonlatAge,rho_shelf,K_shelf,latWindo
                         point_lonlat = shelf_lonlatAge[p_idx, step, [0,1]]
                         
                         
-                        #If there are any points it starts to looking for them inside a 2.5 degree window
+                        # If there are any points it selects those within the search window
                         if new_colonized.size>0:
                             c_coords = shelf_lonlatAge[new_colonized, step, 0:2]#Coordinates of the new colonized point
-                            #If there are points of this type, search for them within a 2.5-degree window
+                            # search for them within the search window
                             lim=np.where(np.logical_and(np.abs(c_coords[:,0]-point_lonlat[0])<=2.5*LonDeg[f_diff,1], np.abs(c_coords[:,1]-point_lonlat[1])<=2.5))[0]
                             f=np.where(D_shelf[new_colonized[lim],count2+1]>0)[0]
                             lim=lim[f]
                             
-                            # Select the nearest point among all on the search window
+                            # Select the active NN
                             if lim.size>0:
 
                                 lim=dist_fun(shelf_lonlatAge, new_colonized[lim], step, point_lonlat, lim)
 
-                                idx_neighbor=new_colonized[lim][0]#Select the index of the nearest neighbour
+                                idx_neighbor=new_colonized[lim][0]
                                 
-                                #Mimick the diversification of the nearest neighbor to the active point, bounded by 1.
-                                D_shelf[p_idx,count2+1]=max(D0,D_shelf[idx_neighbor,count2+1])
+                                
+                                D_shelf[p_idx,count2+1]=max(D0,D_shelf[idx_neighbor,count2+1])#colonize bounded by D0
                                 change=True
                         orphans=pos1S[D_shelf[pos1S, count2+1]==0]
                
-                D_shelf[pos1S, count2+1] = np.maximum(D_shelf[pos1S, count2+1], D0) #force d to be at least D0, 1.
+                D_shelf[pos1S, count2+1] = np.maximum(D_shelf[pos1S, count2+1], D0) # set orphans to D0
                 
                     
 
-            # #2# Special case of continental shelf points that did not exist in
-            #time-1 and were artificially added in the Gplates model to fill gaps 
-            # with age of nearest neighbour continental-shelf points (thus we start diversity with the diversity in the nearest continental shelf points) 
+            # #2# Special case of continental shelf points that did not exist in time-1
+            # and were artificially added by the palaeotectonics model for density reasons
+            # thus the age assinged from their nearest continental-shelf points
+            # and accordingly  we assign them the diversity accumulated by its active neighbour until the current time step 
 
-            pos2S=posS[np.logical_and(np.isnan(deltaAgeS),ageS[posS]>ts2-ts)] # point in time t-1 did not exist or was above land
+            pos2S=posS[np.logical_and(np.isnan(deltaAgeS),ageS[posS]>ts2-ts)] # point in time t-1 did not exist and have been assigned an age greater than the time gap
             pos2S=np.concatenate((pos2S,posS[np.logical_and(shelf_lonlatAge[posS,step-1,2]==0,ageS[posS]>ts2-ts)]))
 
             
@@ -217,7 +231,7 @@ def inditek_alphadiv(Point_timeslices,shelf_lonlatAge,rho_shelf,K_shelf,latWindo
 
                 for k in range(len(pos2S)):
 
-                    ###### Find nearest point
+                    ###### Find nearest point to import diversity in an iterative search window
 
                     point_lonlat = [shelf_lonlatAge[pos2S[k], step, 0],shelf_lonlatAge[pos2S[k], step,1]] # point location
 
@@ -234,19 +248,19 @@ def inditek_alphadiv(Point_timeslices,shelf_lonlatAge,rho_shelf,K_shelf,latWindo
                         lim=np.where(np.logical_and(np.abs(shelf_lonlatAge[posS,step,0]-point_lonlat[0]+5)<=30, np.abs(shelf_lonlatAge[posS,step,1]-point_lonlat[1]<=30)))[0]
                         f=np.where(D_shelf[posS[lim],count2]>0)[0]
 
-                    # Calculate the distance to all points in the area and select the one closest to the point of interest
+                    # Calculate the distance to all points in the area and select the active NN
                     lim=lim[f]
 
                     lim=dist_fun(shelf_lonlatAge, posS[lim], step, point_lonlat, lim)
 
                     
 
-                    #Calculate the diversity of the point of interest as the average diversity of the sorrounding points (excluding itself), same as the previous case
-                    d=min(np.nanmean(D_shelf[posS[lim],count2]),K_shelf[pos2S[k],step])#Bounded by carrying capacity
+                    #Calculate the diversity of the point of interest as the average diversity of the NN points if there are more than one, same as the previous case
+                    d=min(np.nanmean(D_shelf[posS[lim],count2]),K_shelf[pos2S[k],step])# bound by K
                         
                     if d<D0:
 
-                        d=D0 #Force d to be at least D0 (1.0)
+                        d=D0 # bound by D0 
                         
                     
                     ##### Apply differential equation to calculate diversity, same as before
@@ -264,64 +278,58 @@ def inditek_alphadiv(Point_timeslices,shelf_lonlatAge,rho_shelf,K_shelf,latWindo
 
             
 
-            #3# Normal points
-            
-            pos3S=posS[np.logical_and(np.logical_and(deltaAgeS>0,np.round(deltaAgeS)<=ts2-ts),shelf_lonlatAge[posS,step-1,2]!=0)] #Exisiting points with normal behaviour continue to accumulate diversity
+            #3# Normal points: already active and diversifying
 
-            #boundaries between the carrying capacity (K_shelf) and D0 (1 genus area^(-1))
+            pos3S=posS[np.logical_and(np.logical_and(deltaAgeS>0,np.round(deltaAgeS)<=ts2-ts),shelf_lonlatAge[posS,step-1,2]!=0)] 
 
-            
-            D_shelf[pos3S, count2] = np.maximum(D_shelf[pos3S, count2], 1)
-            
 
+            # bound d by D0 & K
+            D_shelf[pos3S, count2] = np.maximum(D_shelf[pos3S, count2], D0)
             d=np.minimum(D_shelf[pos3S,count2], K_shelf[pos3S,step])
 
-            d=np.maximum(D0,d)#bounded by D0
-
-            #Apply differential equation to calculate diversity
-            
-            if count2+1 in ext_index: #if suffers an extinction, it follows an exponential equation
+            #Apply differential equation to continue accumulating diversity 
+                        
+            if count2+1 in ext_index: 
                 d=np.maximum(D0,d+rho_shelf[pos3S,count2+1]*d) #bounded by D0
                 D_shelf[pos3S,count2+1]=np.minimum(K_shelf[pos3S,step],d)#bounded by K_shelf (The carrying capacity)
                 
-
-            else: # normal diversification period and a logistic equation
+            else: 
                 
                 
-                #The rho_shelf_eff is the effective diversification rate that results from applying the logistic equation to the diversification rate (rho_shelf).
+                # save the effective diversification rate that results from applying the logistic equation 
+                # to the diversification rate (rho_shelf).
                 rho_shelf_eff[pos3S,count2+1] = rho_shelf[pos3S,count2+1]* np.maximum(0, (1 - (d / K_shelf[pos3S,step])))
                 
                 d=np.fmin(K_shelf[pos3S,step],d+d*rho_shelf[pos3S,count2+1]*(1-(d/K_shelf[pos3S,step])))
-                
+                # save d
                 D_shelf[pos3S,count2+1]=np.maximum(D0,d) 
                 
-                
-                
-            d=np.maximum(d,D0)
 
-            #All active points (the three kinds defined by N above) accumulate diversity over the time gap
+            # All active points (the three kinds defined by N above) once assigned d at time count+1, accumulate diversity every Myr over the time gap (count2+2,count+1):
 
             d=D_shelf[posS,count2+1]
 
             
-            Myr=len(range(count2+2,count+1))# time gap to still diversify
+            Myr=len(range(count2+2,count+1)) # time gap to still diversify
             scaling=np.ones((d.size,1))
             #for points that appeared mid-period and 
-            #only accumulated diversity during their specific age gap
+            # normalise time for diversification within the time gap
+            # according to their actual life time (deltaAgeS) to account for cases of points created within the gap
             scaling[np.isnan(deltaAgeS)==0]=(np.minimum(deltaAgeS[np.isnan(deltaAgeS)==0]-1,Myr)/Myr)[0] 
 
             
             
-            if np.any(np.isin(np.arange(count2 + 2, count+1), ext_index)): #For a period with any Myr with a extinction we need to sum Myr step-wise diversity
+            if np.any(np.isin(np.arange(count2 + 2, count+1), ext_index)): # case with extinction inside the gap
+                # to avoid logistic function during the Myrs of extinction 
 
                 
                 for gap in range(count2+2,count+1):
                     
                     d=D_shelf[posS,gap-1]
 
-                    d=np.minimum(d,K_shelf[posS,step])
+                    d=np.minimum(d,K_shelf[posS,step]) # bound by K
 
-                    d=np.maximum(d,D0)
+                    d=np.maximum(d,D0) # bound by D0
 
                     if gap in ext_index: #if suffers an extinction
                         #Calculate the effective diversification rate applying the exponential equation for each Myr step, bounded by D0
@@ -330,11 +338,11 @@ def inditek_alphadiv(Point_timeslices,shelf_lonlatAge,rho_shelf,K_shelf,latWindo
                         
                         D_shelf[posS,gap]=np.fmin(K_shelf[posS,step],d)
                         
-                    else: #use the logistic equation for the ages that did not suffer an extinction
+                    else: #use the logistic equation for the Myrs within the gap that did not suffer an extinction
 
                         rho_shelf_eff[posS,gap] = rho_shelf[posS,gap]* np.maximum(0, (1 - (d / K_shelf[posS,step])))
                         d=np.fmin(K_shelf[posS,step],d+d*rho_shelf[posS,gap]*np.maximum(0, (1-(d/K_shelf[posS,step])))*scaling.flatten())
-                        D_shelf[posS,gap]=np.maximum(D0,d)  #included to avoid explosive values due to the explonential growth nature
+                        D_shelf[posS,gap]=np.maximum(D0,d)  # bound by D0
 
 
                     
@@ -359,31 +367,24 @@ def inditek_alphadiv(Point_timeslices,shelf_lonlatAge,rho_shelf,K_shelf,latWindo
                 rho_shelf_eff[posS,count] = rho_shelf[posS,count] * np.maximum(0, (1 - (d / K_shelf[posS,step])))
 
         
-        #Set the ts (time slice), count and step variables for the next iteration
+        # Set the ts (time slice), count and step variables for the next iteration
         ts2=ts
         count2=count
         step = step + 1
 
         
-    # Flip to order from point time slice 1 (0MA) to 542 (541MA)
-
-
+    # Flip to order from point time slice 1 (0MA) to 542 (541MA) to match pt
     D_shelf=np.flip(D_shelf, axis=1)
-
-    # Get the 82 Point time slices for which the model is resolved (pt)
-
+    # Get the 82 Point time slices for which the model is resolved (pt position of -Myr time slices)
     D_shelf=D_shelf[:,pt]
 
     # Flip back once the point time slices for which the model is resolved are compiled
     D_shelf=np.flip(D_shelf, axis=1)
 
-    #Do the same for the rho_shelf_eff matrix
+    # Do the same for rho_shelf_eff
     rho_shelf_eff=np.flip(rho_shelf_eff, axis=1)
     rho_shelf_eff=rho_shelf_eff[:, pt]
-
-    
     rho_shelf_eff=np.flip(rho_shelf_eff, axis=1)
-
 
     #To save the data in a .npz file for tests
     #np.savez("datos_comprobacion_alphadiv.npz", D_shelf=D_shelf, scaling=scaling)
