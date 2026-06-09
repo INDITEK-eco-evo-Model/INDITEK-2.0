@@ -26,7 +26,7 @@ start=time.time()
 num_chains=1 # number of chains
 nsamples=3 # number of iterations
 n_D=1  # save D and residuals every n_D iterations (e.g., n_D=10 → store every 10th iteration)
-model = "proof" # model to be tested, options: "proof", "open", "expo", "food", "temp"
+model = "expo" # model to be tested, options: "proof", "open", "expo", "food", "temp"
 
 #############################################################
 # Define the parameters for each model to be tested (open, proof, expo, food, temp)
@@ -222,7 +222,7 @@ for iChain, result in enumerate(results):
     residuals[:,:,iChain]=result[7]
 
 # Save all variables to the final .npz file
-np.savez(f"probita/inditekMCMCoutput_{nsamples}_{model}.npz", params_proposed_history=params_proposed_history, params_accepted_history=params_accepted_history, rss_proposed_history=rss_proposed_history, rss_accepted_history=rss_accepted_history, acceptance_history=acceptance_history, D=D, residuals=residuals, sigma_new=sigma_new, AR_parameter=AR_parameter)
+np.savez(f"output_data/inditekMCMCoutput_{nsamples}_{model}.npz", params_proposed_history=params_proposed_history, params_accepted_history=params_accepted_history, rss_proposed_history=rss_proposed_history, rss_accepted_history=rss_accepted_history, acceptance_history=acceptance_history, D=D, residuals=residuals, sigma_new=sigma_new, AR_parameter=AR_parameter)
 
 end=time.time()
 print('{:.4f} s'.format(end-start)) 

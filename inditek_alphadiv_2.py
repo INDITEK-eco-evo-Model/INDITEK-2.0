@@ -91,11 +91,6 @@ def inditek_alphadiv(Point_timeslices,shelf_lonlatAge,rho_shelf,K_shelf,latWindo
         # active point positions from shelf data (points that exist=are submerged, within the time gap (ageS>0))
         posS=np.where(np.logical_and(~np.isnan(ageS), ageS>0))[0]
 
-        
-        
-
-
-
         # Initialize diversity for the first timeframe (ts == Point_timeslices[1])
         if ts == Point_timeslices[0]:
 
