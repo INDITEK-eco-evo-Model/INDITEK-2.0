@@ -30,7 +30,7 @@ To run the model, the Python scripts (`.py` and `ipynb`) and the `data`, `output
 - `landShelfOceanMask.mat`: A 0-2 mask used to distinguish land, shelf and ocean grids.
 - `LonDeg.mat`: Degrees of longitud as a function of latitude (with a distance equivalent to 1º at the equator). Used to identify active nearest neighbours (NN) within a restricted area, mimicking immigration to newly submerged continental platform.
 - `rhoExt.csv`: Mass extinction patterns inputted in the model.
-- `observed_D.npz`: Observed present-day biodiversity patterns (in this case proof-of-concept simulated data).
+- `observed_D.npz`: Observed present-day biodiversity patterns (in this case proof-of-concept simulated data) created with `synthetic_data.py` script.
 
 The other folders are used for:
 - `images`: Contains all the images generated for the manuscript.
